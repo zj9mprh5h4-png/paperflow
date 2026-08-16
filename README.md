@@ -185,8 +185,8 @@ and redistribution rights have been checked. Configure a local template through
 a template, it names the DOCX part and the kind of link but never the path itself.
 
 `paperflow sanitize-template --docx <template>` writes a repaired copy without touching the
-original, removing the attached document template, hyperlink base, and author metadata while
-leaving styles and layout byte-identical. It reports anything it could not repair;
+original, removing the attached document template, hyperlink base, author metadata, and file paths
+stored in image alternative text, while leaving styles and layout byte-identical. It reports anything it could not repair;
 [`docs/word-template.md`](docs/word-template.md#remove-absolute-local-paths) explains which Word
 setting to clear for those.
 

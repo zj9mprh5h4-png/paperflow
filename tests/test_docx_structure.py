@@ -74,6 +74,22 @@ def test_docx_absolute_paths_are_reported_by_part_and_kind_without_the_path(
     assert not any("example" in location for location in status.absolute_paths)
 
 
+def test_docx_absolute_path_in_image_alt_text_is_named_as_such(tmp_path: Path) -> None:
+    docx = tmp_path / "template.docx"
+    make_minimal_docx(docx, b'<w:document xmlns:w="w"><w:body/></w:document>')
+    with zipfile.ZipFile(docx, "a") as archive:
+        archive.writestr(
+            "word/header3.xml",
+            b'<w:hdr xmlns:w="w"><wp:docPr id="6" name="Picture 6" '
+            b'descr="C:\\Users\\Elaine.Scott\\Documents\\logo1.jpg"/></w:hdr>',
+        )
+
+    status = docx_reference_status(docx)
+
+    assert not status.path_safe
+    assert status.absolute_paths == ("word/header3.xml (image alt text)",)
+
+
 def test_docx_reference_status_rejects_non_docx(tmp_path: Path) -> None:
     path = tmp_path / "not-a-docx.docx"
     path.write_text("not a zip archive", encoding="utf-8")
