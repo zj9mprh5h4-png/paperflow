@@ -179,9 +179,6 @@ def ensure_inside_project(path: Path, root: Path) -> Path:
 
 
 def python_is_venv(root: Path) -> bool:
-    exe = Path(sys.executable).resolve()
-    try:
-        exe.relative_to((root / ".venv").resolve())
-    except ValueError:
+    if sys.prefix == sys.base_prefix:
         return False
-    return True
+    return Path(sys.prefix).resolve() == (root / ".venv").resolve()

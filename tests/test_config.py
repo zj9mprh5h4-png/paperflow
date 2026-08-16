@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from paperflow.commands import PaperflowError, executable
+from paperflow.commands import PaperflowError, executable, python_is_venv
 from paperflow.config import load_config
 
 
@@ -82,3 +82,22 @@ def test_local_executable_override_is_resolved(tmp_path: Path) -> None:
     )
 
     assert executable("quarto", root=tmp_path) == str(tool.resolve())
+
+
+def test_python_is_venv_uses_the_environment_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("paperflow.commands.sys.prefix", str(tmp_path / ".venv"))
+    monkeypatch.setattr("paperflow.commands.sys.base_prefix", str(tmp_path / "python"))
+
+    assert python_is_venv(tmp_path)
+
+
+def test_python_is_venv_rejects_the_base_interpreter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prefix = str(tmp_path / ".venv")
+    monkeypatch.setattr("paperflow.commands.sys.prefix", prefix)
+    monkeypatch.setattr("paperflow.commands.sys.base_prefix", prefix)
+
+    assert not python_is_venv(tmp_path)
