@@ -4,6 +4,7 @@ import pytest
 
 from paperflow import __version__, cli
 from paperflow.cli import main
+from paperflow.commands import PaperflowError
 
 
 def test_cli_version_uses_installed_package_metadata(capsys: pytest.CaptureFixture[str]) -> None:
@@ -59,3 +60,27 @@ def test_clean_preserves_archive_unless_explicitly_included(
 
     assert cli.clean_build(yes=True, include_archive=True) == 0
     assert not archive.exists()
+
+
+def test_clean_refuses_to_delete_an_archive_directory_holding_other_content(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "paperflow.yml").write_text(
+        "schema_version: 1\nbuild:\n  archive_dir: manuscript\n",
+        encoding="utf-8",
+    )
+    build = tmp_path / "build"
+    manuscript = tmp_path / "manuscript"
+    build.mkdir()
+    manuscript.mkdir()
+    (build / "paper_current.docx").write_bytes(b"current")
+    (manuscript / "index.qmd").write_text("# Manuscript\n", encoding="utf-8")
+    monkeypatch.setattr(cli, "find_project_root", lambda: tmp_path)
+
+    with pytest.raises(PaperflowError, match="did not archive") as error:
+        cli.clean_build(yes=True, include_archive=True)
+
+    assert error.value.code == "clean.archive_not_dedicated"
+    assert (manuscript / "index.qmd").is_file()
+    assert (build / "paper_current.docx").is_file()

@@ -11,6 +11,7 @@ from . import __version__
 from .commands import PaperflowError, find_project_root
 from .config import load_config
 from .open_items import build_open_items
+from .publication import assert_archive_is_dedicated, remove_archived_versions
 from .review import (
     import_preworkflow_word_baseline,
     import_review,
@@ -131,23 +132,22 @@ def clean_build(*, yes: bool, include_archive: bool = False) -> int:
     config = load_config(root)
     build = config.paths.output_dir
     archive = config.build.archive_dir
-    build.mkdir(exist_ok=True)
+    if include_archive:
+        assert_archive_is_dedicated(archive)
+    build.mkdir(parents=True, exist_ok=True)
     for child in build.iterdir():
         if child.name == ".gitkeep":
             continue
-        if not include_archive and archive.is_relative_to(child):
+        if archive.is_relative_to(child):
             continue
         if child.is_dir():
             shutil.rmtree(child)
         else:
             child.unlink()
-    if include_archive and archive.exists() and not archive.is_relative_to(build):
-        if archive.is_dir():
-            shutil.rmtree(archive)
-        else:
-            archive.unlink()
+    if include_archive:
+        remove_archived_versions(archive)
     print(f"Cleaned generated files in {build}")
-    if not include_archive:
+    if not include_archive and archive.exists():
         print(f"Preserved archived DOCX versions in {archive}")
     return 0
 

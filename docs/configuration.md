@@ -79,7 +79,7 @@ All three paths must remain inside the repository.
 | `manuscript_filename` | bare `.docx` filename | `paper_current.docx` | Stable manuscript filename created under `paths.output_dir`. Directories and non-DOCX extensions are rejected. |
 | `run_pre_render_hook` | boolean | `true` | Runs `scripts/pre_render.py` with the active Python interpreter before manuscript rendering when that file exists. Has no effect when the hook is absent. |
 | `archive_previous` | boolean | `true` | Moves each superseded current DOCX into `archive_dir` after all new outputs have rendered and validated successfully. |
-| `archive_dir` | project-relative directory | `build/archived` | Stores previous DOCX versions under sortable UTC names such as `paper_20260811T215623Z.docx`. It must be a dedicated directory and cannot contain a current output. |
+| `archive_dir` | project-relative directory | `build/archived` | Stores previous DOCX versions under sortable UTC names such as `paper_20260811T215623Z.docx`. It must be a dedicated directory and cannot contain a current output. `paperflow clean --yes --include-archive` refuses to delete it when it holds anything other than archived DOCX files, so a mistyped value cannot remove manuscript sources. |
 | `embed_provenance` | boolean | `true` | Adds the build time, source commit and dirty state, Paperflow version, and Quarto version as custom Word properties. |
 
 Paperflow derives an archive filename from the existing document's embedded

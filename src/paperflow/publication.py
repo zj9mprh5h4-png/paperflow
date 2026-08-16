@@ -259,6 +259,52 @@ def _available_archive_path(path: Path, archive_dir: Path, reserved: set[Path]) 
         sequence += 1
 
 
+def assert_archive_is_dedicated(archive_dir: Path) -> None:
+    """Refuse to treat a directory as the archive when it holds anything else."""
+    if not archive_dir.exists():
+        return
+    if not archive_dir.is_dir():
+        raise PaperflowError(
+            f"Configured build.archive_dir is not a directory: {archive_dir}",
+            code="clean.archive_not_a_directory",
+            remediation=(
+                "Set build.archive_dir to a dedicated project-relative directory such as "
+                "build/archived.",
+            ),
+        )
+    unexpected = sorted(
+        child.name
+        for child in archive_dir.iterdir()
+        if child.is_dir() or child.suffix.lower() != ".docx"
+    )
+    if not unexpected:
+        return
+    listed = ", ".join(unexpected[:5])
+    if len(unexpected) > 5:
+        listed += f", and {len(unexpected) - 5} more"
+    raise PaperflowError(
+        f"Refusing to delete {archive_dir} because it holds content Paperflow did not "
+        f"archive: {listed}",
+        code="clean.archive_not_dedicated",
+        remediation=(
+            "Check build.archive_dir in paperflow.yml; it must be a dedicated directory that "
+            "holds only archived DOCX versions.",
+            "Move the listed content elsewhere, or delete the directory manually after "
+            "confirming what it contains.",
+        ),
+    )
+
+
+def remove_archived_versions(archive_dir: Path) -> None:
+    """Delete archived DOCX versions without touching unrelated content."""
+    assert_archive_is_dedicated(archive_dir)
+    if not archive_dir.exists():
+        return
+    for child in archive_dir.iterdir():
+        child.unlink()
+    archive_dir.rmdir()
+
+
 def build_metadata(config: PaperflowConfig, build_time: datetime) -> dict[str, str]:
     try:
         commit = git_commit(config.root)
