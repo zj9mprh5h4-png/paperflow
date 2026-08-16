@@ -1,9 +1,8 @@
 # Contributing
 
-Paperflow uses a controlled contribution model. After the repository is made public, issues are
-welcome. Discuss a change in an issue and wait for maintainer agreement before opening a pull
-request. Uncoordinated pull requests may be closed so that manuscript safety and workflow scope
-remain reviewable.
+Paperflow uses a controlled contribution model. Issues are welcome. Discuss a change in an issue
+and wait for maintainer agreement before opening a pull request. Uncoordinated pull requests may be
+closed so that manuscript safety and workflow scope remain reviewable.
 
 By submitting a contribution, you confirm that you have the right to provide it and agree that the
 Paperflow-authored contribution may be distributed under the repository's MIT License. Do not

@@ -7,14 +7,16 @@ Paperflow is currently a pre-release project. Security fixes are applied to the 
 
 ## Reporting a vulnerability
 
-Do not report a suspected vulnerability in a public issue and do not attach confidential material
-to an issue or pull request. Before public release, the maintainers must enable GitHub private
-vulnerability reporting or document another private reporting channel here.
+Use GitHub's private vulnerability reporting. Open the repository's **Security** page, choose
+**Advisories**, and select **Report a vulnerability**. The report and subsequent discussion remain
+private to the reporter and the repository's security collaborators until an advisory is
+deliberately published.
 
-Until that private channel exists, do not transmit manuscripts, returned Word reviews, credentials,
-private templates, unpublished data, exploit details, or other sensitive files through the
-repository. The missing private reporting channel is an explicit public-release blocker, not an
-invitation to use a public issue.
+Do not report a suspected vulnerability in a public issue or pull request. Provide the affected
+version or commit, expected impact, reproduction steps, and a minimal neutral example when
+possible. Do not transmit manuscripts, returned Word reviews, credentials, private templates,
+unpublished data, or other sensitive files unless they are strictly necessary and you have the
+right to share them. Redact unrelated content first.
 
 ## Confidential workflow material
 
