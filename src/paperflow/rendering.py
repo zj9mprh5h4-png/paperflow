@@ -8,7 +8,7 @@ from .config import PaperflowConfig
 from .docx_math import protect_docx_inline_math
 from .publication import publish_docx_outputs
 from .validation import (
-    docx_contains_absolute_paths,
+    docx_absolute_path_locations,
     docx_core_files_present,
 )
 
@@ -61,8 +61,22 @@ def stage_qmd_to_docx(
             protect_docx_inline_math(rendered)
         if not docx_core_files_present(rendered):
             raise PaperflowError(f"Generated file is not a valid DOCX: {output}")
-        if config.word.reject_absolute_paths and docx_contains_absolute_paths(rendered):
-            raise PaperflowError(f"Generated DOCX contains an absolute local path: {output}")
+        if config.word.reject_absolute_paths:
+            locations = docx_absolute_path_locations(rendered)
+            if locations:
+                raise PaperflowError(
+                    "Generated DOCX contains an absolute local path in "
+                    f"{'; '.join(locations)}; {output.name} was not replaced.",
+                    code="render.absolute_path",
+                    remediation=(
+                        "Such a path almost always comes from the configured Word reference "
+                        "document, which Quarto copies headers, footers, and styles from.",
+                        "Run uv run paperflow sanitize-template --docx <template> to repair a "
+                        "copy, then uv run paperflow doctor to confirm.",
+                        "See docs/word-template.md for the parts sanitize-template reports "
+                        "instead of repairing.",
+                    ),
+                )
         rendered.replace(staged)
         return staged
     except BaseException:

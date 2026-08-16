@@ -22,7 +22,7 @@ def test_render_finds_quarto_output_in_project_output_directory(
 
     monkeypatch.setattr(rendering, "require_tool", lambda *args, **kwargs: "quarto")
     monkeypatch.setattr(rendering, "docx_core_files_present", lambda path: True)
-    monkeypatch.setattr(rendering, "docx_contains_absolute_paths", lambda path: False)
+    monkeypatch.setattr(rendering, "docx_absolute_path_locations", lambda path: ())
     monkeypatch.setattr(rendering, "protect_docx_inline_math", lambda path: 0)
 
     def fake_publish(staged_outputs: dict[Path, Path], **kwargs: object) -> None:
@@ -64,7 +64,11 @@ def test_invalid_render_does_not_replace_previous_output(
 
     monkeypatch.setattr(rendering, "require_tool", lambda *args, **kwargs: "quarto")
     monkeypatch.setattr(rendering, "docx_core_files_present", lambda path: True)
-    monkeypatch.setattr(rendering, "docx_contains_absolute_paths", lambda path: True)
+    monkeypatch.setattr(
+        rendering,
+        "docx_absolute_path_locations",
+        lambda path: ("word/header3.xml (embedded path)",),
+    )
     monkeypatch.setattr(rendering, "protect_docx_inline_math", lambda path: 0)
 
     def fake_run_command(args: list[str], **kwargs) -> object:
@@ -76,7 +80,12 @@ def test_invalid_render_does_not_replace_previous_output(
 
     monkeypatch.setattr(rendering, "run_command", fake_run_command)
 
-    with pytest.raises(PaperflowError, match="absolute local path"):
+    with pytest.raises(PaperflowError, match="absolute local path") as error:
         rendering.render_qmd_to_docx(source, output, config=config)
 
     assert output.read_bytes() == b"previous valid output"
+    # The rejection has to name the offending part; the previous message named only the
+    # output file, which says nothing about where the path came from.
+    assert "word/header3.xml (embedded path)" in str(error.value)
+    assert error.value.code == "render.absolute_path"
+    assert "sanitize-template" in " ".join(error.value.remediation)
