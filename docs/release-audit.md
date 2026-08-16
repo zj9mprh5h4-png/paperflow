@@ -4,6 +4,8 @@ Audit date: 2026-08-16
 
 Baseline: local commit `4564674` (`main`)
 
+Remote validation: private GitHub commit `2ab2a75` (`main`)
+
 This report records the checks performed before Paperflow is connected to a public remote. It is
 evidence for the release checklist, not a declaration that the repository is ready to publish.
 
@@ -37,8 +39,9 @@ The following workflows have been exercised locally on Windows without administr
 - creation and import of a Word Track Changes review round;
 - verification that review import does not alter QMD or Markdown source files.
 
-The repository defines equivalent validation jobs for Windows and Linux. Remote CI has not yet run
-because no GitHub repository or remote has been created.
+The private GitHub repository ran the complete validation workflow successfully for commit
+`2ab2a75`. Both `ubuntu-latest` and `windows-latest` passed environment setup, Doctor, CLI checks,
+lint, 29 tests, and the neutral-example Word build.
 
 ## Remaining publication blockers
 
@@ -47,8 +50,8 @@ Do not publish the repository until these decisions and checks are complete:
 1. select and add a license;
 2. decide whether the repository accepts contributions and security reports, then align the
    governance documents;
-3. create the remote repository and confirm that the Windows and Linux CI jobs pass there;
-4. review GitHub repository visibility and template-repository settings;
-5. run the final checklist against the exact commit intended for publication.
+3. review GitHub repository visibility and template-repository settings;
+4. run the final checklist against the exact commit intended for publication.
 
-No remote was created, no branch was pushed, and no license was selected as part of this audit.
+A private remote was created and `main` was pushed. Public visibility was not enabled and no license
+was selected as part of this audit.
