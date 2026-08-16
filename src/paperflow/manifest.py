@@ -42,3 +42,13 @@ def write_manifest(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {"created_utc": utc_timestamp(), **data}
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def read_manifest(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Could not read manifest {path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"Manifest must contain a JSON object: {path}")
+    return payload

@@ -2,19 +2,45 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
 
 from paperflow import review
 from paperflow.commands import PaperflowError
+from paperflow.manifest import sha256_file, write_manifest
 
 
 def write_project(root: Path) -> None:
     (root / "manuscript").mkdir(parents=True)
     (root / "reviews" / "round-01" / "baseline").mkdir(parents=True)
     (root / "manuscript" / "index.qmd").write_text("authoritative source\n", encoding="utf-8")
-    (root / "reviews" / "round-01" / "baseline" / "paper.docx").write_bytes(b"baseline docx")
+    baseline = root / "reviews" / "round-01" / "baseline" / "paper.docx"
+    baseline.write_bytes(b"baseline docx")
+    write_manifest(
+        root / "reviews" / "round-01" / "manifest.json",
+        {
+            "round": 1,
+            "reviewer": "Dr. Reviewer",
+            "reviewer_slug": "dr.-reviewer",
+            "baseline_commit": "baseline123",
+            "baseline_docx_sha256": sha256_file(baseline),
+        },
+    )
+
+
+def write_minimal_docx(path: Path) -> None:
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("[Content_Types].xml", b"<Types/>")
+        archive.writestr("_rels/.rels", b"<Relationships/>")
+        archive.writestr(
+            "word/document.xml",
+            (
+                b'<w:document xmlns:w="w"><w:body>'
+                b'<w:ins w:id="1"><w:r/></w:ins></w:body></w:document>'
+            ),
+        )
 
 
 def test_review_import_outputs_and_preserves_source(
@@ -25,7 +51,7 @@ def test_review_import_outputs_and_preserves_source(
     root.mkdir()
     write_project(root)
     incoming = tmp_path / "returned review.docx"
-    incoming.write_bytes(b"incoming docx")
+    write_minimal_docx(incoming)
     source_before = (root / "manuscript" / "index.qmd").read_text(encoding="utf-8")
 
     def fake_docx_to_markdown(docx: Path, output: Path, *, track_changes: str, root: Path) -> None:
@@ -54,8 +80,33 @@ def test_review_import_outputs_and_preserves_source(
     assert (root / "manuscript" / "index.qmd").read_text(encoding="utf-8") == source_before
     manifest = root / "reviews" / "round-01" / "derived" / "dr.-reviewer"
     assert (manifest / "import-manifest.json").exists()
+    manifest_text = (manifest / "import-manifest.json").read_text(encoding="utf-8")
+    assert '"baseline_commit": "baseline123"' in manifest_text
+    assert '"import_commit": "abc123"' in manifest_text
+    assert '"tracked_insertions": 1' in manifest_text
 
     with pytest.raises(PaperflowError):
+        review.import_review(
+            round_number=1,
+            reviewer="Dr. Reviewer",
+            incoming_docx=incoming,
+            root=root,
+        )
+
+
+def test_review_import_rejects_tampered_baseline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    write_project(root)
+    incoming = tmp_path / "returned.docx"
+    write_minimal_docx(incoming)
+    (root / "reviews" / "round-01" / "baseline" / "paper.docx").write_bytes(b"tampered")
+    monkeypatch.setattr(review, "git_commit", lambda root: "abc123")
+
+    with pytest.raises(PaperflowError, match="no longer matches its manifest"):
         review.import_review(
             round_number=1,
             reviewer="Dr. Reviewer",

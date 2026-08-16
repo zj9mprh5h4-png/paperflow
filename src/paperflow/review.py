@@ -4,6 +4,7 @@ import difflib
 import re
 import shutil
 import sys
+import zipfile
 from pathlib import Path
 
 from .commands import (
@@ -16,8 +17,9 @@ from .commands import (
     run_command,
 )
 from .config import PaperflowConfig, load_config
-from .manifest import command_version, git_commit, sha256_file, write_manifest
+from .manifest import command_version, git_commit, read_manifest, sha256_file, write_manifest
 from .rendering import render_qmd_to_docx
+from .validation import docx_core_files_present, docx_revision_counts
 
 
 def reviewer_slug(reviewer: str) -> str:
@@ -351,11 +353,42 @@ def import_review(
     if not baseline_docx.exists():
         raise PaperflowError(f"Missing review baseline DOCX: {baseline_docx}")
 
+    round_manifest_path = review_root / "manifest.json"
+    try:
+        round_manifest = read_manifest(round_manifest_path)
+    except ValueError as exc:
+        raise PaperflowError(str(exc)) from exc
+    if round_manifest.get("round") != round_number:
+        raise PaperflowError(f"Review manifest round does not match round {round_number}.")
+    if round_manifest.get("reviewer_slug") != slug:
+        raise PaperflowError(
+            f"Review manifest belongs to reviewer {round_manifest.get('reviewer_slug')!r}, "
+            f"not {slug!r}."
+        )
+    baseline_commit = round_manifest.get("baseline_commit")
+    expected_baseline_hash = round_manifest.get("baseline_docx_sha256")
+    if not isinstance(baseline_commit, str) or not isinstance(expected_baseline_hash, str):
+        raise PaperflowError(
+            f"Review manifest is missing baseline integrity data: {round_manifest_path}"
+        )
+    actual_baseline_hash = sha256_file(baseline_docx)
+    if actual_baseline_hash != expected_baseline_hash:
+        raise PaperflowError(
+            "Review baseline DOCX no longer matches its manifest; refusing import."
+        )
+
     source_docx = incoming_docx.expanduser()
     if not source_docx.is_absolute():
         source_docx = (Path.cwd() / source_docx).resolve()
     if not source_docx.exists():
         raise PaperflowError(f"Incoming DOCX does not exist: {incoming_docx}")
+    try:
+        valid_incoming = docx_core_files_present(source_docx)
+    except (OSError, zipfile.BadZipFile):
+        valid_incoming = False
+    if not valid_incoming:
+        raise PaperflowError(f"Incoming review file is not a valid DOCX: {source_docx}")
+    tracked_insertions, tracked_deletions = docx_revision_counts(source_docx)
 
     incoming_dir = review_root / "incoming" / slug
     incoming_dir.mkdir(parents=True, exist_ok=True)
@@ -381,9 +414,13 @@ def import_review(
             "round": round_number,
             "reviewer": reviewer,
             "reviewer_slug": slug,
-            "baseline_commit": git_commit(project_root),
+            "baseline_commit": baseline_commit,
+            "baseline_docx_sha256": actual_baseline_hash,
+            "import_commit": git_commit(project_root),
             "incoming_docx": archived_docx.relative_to(project_root).as_posix(),
             "incoming_docx_sha256": sha256_file(archived_docx),
+            "tracked_insertions": tracked_insertions,
+            "tracked_deletions": tracked_deletions,
             "accepted_markdown": accepted_md.relative_to(project_root).as_posix(),
             "all_changes_markdown": all_changes_md.relative_to(project_root).as_posix(),
             "diff": diff_md.relative_to(project_root).as_posix(),

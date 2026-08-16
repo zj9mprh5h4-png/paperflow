@@ -10,6 +10,7 @@ from paperflow.validation import (
     docx_contains_omml,
     docx_core_files_present,
     docx_reference_status,
+    docx_revision_counts,
 )
 
 
@@ -45,6 +46,20 @@ def test_docx_reference_status_rejects_non_docx(tmp_path: Path) -> None:
     path.write_text("not a zip archive", encoding="utf-8")
 
     assert docx_reference_status(path) == (False, False)
+
+
+def test_docx_revision_counts_track_word_changes(tmp_path: Path) -> None:
+    docx = tmp_path / "review.docx"
+    make_minimal_docx(
+        docx,
+        (
+            b'<w:document xmlns:w="w"><w:body><w:ins w:id="1"><w:r/></w:ins>'
+            b'<w:del w:id="2"><w:r><w:delText>old</w:delText></w:r></w:del>'
+            b"</w:body></w:document>"
+        ),
+    )
+
+    assert docx_revision_counts(docx) == (1, 1)
 
 
 def test_inline_math_is_wrapped_in_nobreak_box_without_changing_display_math(

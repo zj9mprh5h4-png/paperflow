@@ -56,6 +56,15 @@ def docx_reference_status(path: Path) -> tuple[bool, bool]:
     return valid, path_safe
 
 
+def docx_revision_counts(path: Path) -> tuple[int, int]:
+    """Return tracked insertion and deletion element counts from the main Word document."""
+    with zipfile.ZipFile(path) as archive:
+        document = archive.read("word/document.xml")
+    insertions = len(re.findall(rb"<w:ins(?:\s|>)", document))
+    deletions = len(re.findall(rb"<w:del(?:\s|>)", document))
+    return insertions, deletions
+
+
 def doctor(*, allow_missing_tools: bool = False) -> int:
     root = find_project_root()
     checks: list[tuple[str, bool, str]] = []
