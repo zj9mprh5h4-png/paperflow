@@ -15,6 +15,8 @@ does not depend on Codex. A template user may adapt or remove this file delibera
 - Treat the effective `project.manuscript` path as the authoritative manuscript entry point and the
   effective `project.formatting_rules` path as the editing-rules source. Do not assume their default
   paths after a user changes `paperflow.yml`.
+- Do not set `lang` or an output filename in `_quarto.yml`. Paperflow passes both from
+  `paperflow.yml` on the Quarto command line, so an entry there looks effective but is ignored.
 
 ## Manuscript and review safety
 

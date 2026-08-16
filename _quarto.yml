@@ -1,5 +1,17 @@
+# Quarto project settings.
+#
+# Paperflow passes some rendering inputs on the Quarto command line, where they override
+# anything set here. Do not duplicate them in this file:
+#
+#   lang             -> project.language in paperflow.yml
+#   output filename  -> build.manuscript_filename and paths.output_dir in paperflow.yml
+#
+# Everything else below belongs to this file alone. See docs/configuration.md.
+
 project:
   type: default
+  # Where Quarto drops its intermediate render. Paperflow finds that file regardless and
+  # publishes the document to paths.output_dir from paperflow.yml.
   output-dir: build
 
 format:
@@ -13,4 +25,3 @@ execute:
   error: true
 
 bibliography: references/references.bib
-lang: en

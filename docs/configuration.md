@@ -51,6 +51,27 @@ between machines, especially executable locations and private Word templates, in
 | Git, `uv`, or Quarto executable path | No | Yes, when not on `PATH` |
 | Private reference DOCX | No | Yes |
 
+## What `_quarto.yml` owns
+
+`_quarto.yml` is the Quarto project file. Paperflow never reads it; Quarto does. Format options,
+execution defaults, and the bibliography path live there and nowhere else. A bibliography path is
+deliberately not part of the Paperflow schema.
+
+Two rendering inputs are different, because Paperflow passes them on the Quarto command line where
+they override whatever the project file contains:
+
+| Input | Owned by | Effect of also setting it in `_quarto.yml` |
+| --- | --- | --- |
+| `lang` | `project.language` | Silently ignored. Paperflow passes `--metadata lang:<value>` on every render. |
+| Output filename | `build.manuscript_filename` with `paths.output_dir` | Silently ignored. Paperflow renders to a temporary name and publishes the result itself. |
+
+Because such an entry looks effective but is not, `_quarto.yml` no longer sets `lang`, and a
+repository test keeps it that way.
+
+`project.output-dir` in `_quarto.yml` still decides where Quarto drops its intermediate render.
+Paperflow locates that file regardless and publishes to `paths.output_dir`, so the two values only
+need to agree when you also run `quarto` directly.
+
 ## Top-level schema
 
 ### `schema_version`

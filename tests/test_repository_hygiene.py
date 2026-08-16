@@ -74,6 +74,15 @@ def test_issue_forms_have_required_fields_and_unique_ids() -> None:
         assert len(ids) == len(set(ids)), f"Duplicate field ID in {document.relative_to(ROOT)}"
 
 
+def test_quarto_project_does_not_duplicate_paperflow_owned_metadata() -> None:
+    quarto = yaml.safe_load((ROOT / "_quarto.yml").read_text(encoding="utf-8"))
+
+    assert "lang" not in quarto, (
+        "_quarto.yml must not set lang. Paperflow passes project.language as --metadata on "
+        "every render, so an entry here looks effective but is silently ignored."
+    )
+
+
 def test_license_metadata_and_scope_are_consistent() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert pyproject["project"]["license"] == "MIT"
