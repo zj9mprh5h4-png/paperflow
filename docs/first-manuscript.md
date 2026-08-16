@@ -39,12 +39,18 @@ git status --short
 ## 2. Install and validate prerequisites
 
 Install Git, `uv`, and Quarto yourself as described in [Setup](setup.md). Then create the locked
-Python environment:
+Python environment and the machine-specific configuration:
 
 ```bash
 uv sync --frozen --extra dev
+uv run paperflow init-local
 uv run paperflow doctor
 ```
+
+`init-local` writes the ignored `.paperflow.local.yml`. It records only what this machine actually
+needs: tools on `PATH` stay `null`, an installation outside `PATH` is recorded with its absolute
+path. Because the file is ignored by Git, repeat this step on every machine that clones the
+manuscript repository.
 
 Resolve every blocking Doctor result before editing manuscript content.
 

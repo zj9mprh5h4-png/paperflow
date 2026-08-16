@@ -1,5 +1,8 @@
 # Copy this file to .paperflow.local.yml for machine-specific overrides.
 # .paperflow.local.yml is ignored by Git.
+#
+# 'uv run paperflow init-local' generates the same file from the tools found on
+# this machine. Use this example only to write it by hand.
 
 executables:
   quarto: null

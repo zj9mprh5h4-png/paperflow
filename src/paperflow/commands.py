@@ -169,8 +169,8 @@ def require_tool(name: str, *, root: Path | None = None) -> str:
             ),
             "quarto": (
                 "Install Quarto manually: https://quarto.org/docs/download/ "
-                "Then put it on PATH or configure executables.quarto in "
-                ".paperflow.local.yml."
+                "Then put it on PATH, or run 'paperflow init-local' to record its "
+                "location in .paperflow.local.yml."
             ),
         }.get(name, f"Install '{name}' manually and put it on PATH.")
         raise PaperflowError(

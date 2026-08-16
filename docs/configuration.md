@@ -11,6 +11,10 @@ project value, while omitted fields retain their project or default value. Unkno
 types, unsupported schema versions, unsafe project paths, and invalid marker expressions stop the
 command with an error.
 
+`.paperflow.local.yml` is ignored by Git and therefore absent in a fresh clone. Create it with
+`uv run paperflow init-local`, which records only the tools this machine cannot reach through
+`PATH`, or copy `paperflow.local.example.yml` and edit it by hand.
+
 Use these commands after editing configuration:
 
 ```bash

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import copy
+import glob
 import re
+import shutil
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from .commands import PaperflowError, find_project_root
+from .commands import PaperflowError, executable, find_project_root
 
 CONFIG_FILE = "paperflow.yml"
 LOCAL_CONFIG_FILE = ".paperflow.local.yml"
@@ -275,6 +278,116 @@ def _optional_executable(value: Any, label: str) -> str | None:
     if value is None:
         return None
     return _string(value, label)
+
+
+ON_PATH = "PATH"
+NOT_FOUND = "not found"
+
+# Locations documented in docs/setup.md for installations that skip PATH.
+WELL_KNOWN_EXECUTABLES: dict[str, tuple[str, ...]] = {
+    "git": (
+        "C:/Program Files/Git/cmd/git.exe",
+        "~/AppData/Local/Programs/Git/cmd/git.exe",
+    ),
+    "uv": (
+        "~/.local/bin/uv.exe",
+        "~/.local/bin/uv",
+    ),
+    "quarto": (
+        "~/AppData/Local/Programs/Quarto/*/bin/quarto.exe",
+        "C:/Program Files/Quarto/bin/quarto.exe",
+        "~/.local/share/quarto/bin/quarto",
+        "/opt/quarto/bin/quarto",
+    ),
+}
+
+
+@dataclass(frozen=True)
+class LocalConfigResult:
+    path: Path
+    executables: dict[str, str]
+
+
+def _well_known_executable(name: str) -> str | None:
+    for pattern in WELL_KNOWN_EXECUTABLES.get(name, ()):
+        expanded = str(Path(pattern).expanduser())
+        for match in sorted(glob.glob(expanded), reverse=True):
+            if Path(match).is_file():
+                return match
+    return None
+
+
+def _resolve_local_executable(name: str, root: Path, explicit: str | None) -> str:
+    """Return an absolute path to record, or the ON_PATH/NOT_FOUND marker."""
+    if explicit is not None:
+        candidate = Path(explicit).expanduser()
+        resolved = candidate if candidate.is_absolute() else (root / candidate)
+        if not resolved.is_file():
+            raise PaperflowError(
+                f"Configured {name} executable does not exist: {explicit}",
+                code="init_local.executable_missing",
+                remediation=(
+                    f"Pass --{name} with the full path to the installed {name} executable.",
+                    f"Run {name} --version in a terminal to confirm the location first.",
+                ),
+            )
+        return resolved.resolve().as_posix()
+    if shutil.which(name) is not None:
+        return ON_PATH
+    found = executable(name, root=root) or _well_known_executable(name)
+    return Path(found).resolve().as_posix() if found else NOT_FOUND
+
+
+def write_local_config(
+    root: Path,
+    *,
+    executables: Mapping[str, str] | None = None,
+    reference_docx: str | None = None,
+    force: bool = False,
+) -> LocalConfigResult:
+    """Create .paperflow.local.yml from the tools present on this machine."""
+    path = root / LOCAL_CONFIG_FILE
+    if path.exists() and not force:
+        raise PaperflowError(
+            f"Local configuration already exists: {path}",
+            code="init_local.exists",
+            remediation=(
+                f"Edit {LOCAL_CONFIG_FILE} directly, or rerun with --force to replace it.",
+                "Run uv run paperflow config-show to inspect the effective merged values.",
+            ),
+        )
+
+    explicit = executables or {}
+    resolved = {
+        name: _resolve_local_executable(name, root, explicit.get(name))
+        for name in ("git", "uv", "quarto")
+    }
+    reference = Path(reference_docx).as_posix() if reference_docx else None
+    lines = [
+        "# Machine-specific Paperflow overrides.",
+        "# This file is ignored by Git and has to be created on every machine.",
+        "# Written by 'paperflow init-local'; edit it by hand whenever a path changes.",
+        "",
+        "executables:",
+        "  # null means the tool is on PATH, or was not found and still has to be installed.",
+    ]
+    lines.extend(
+        f"  {name}: null"
+        if resolved[name] in {ON_PATH, NOT_FOUND}
+        else f'  {name}: "{resolved[name]}"'
+        for name in ("git", "uv", "quarto")
+    )
+    lines.extend(
+        [
+            "",
+            "word:",
+            "  # Local reference DOCX. templates/*.docx is ignored by Git.",
+            f'  reference_docx: "{reference}"' if reference else "  reference_docx: null",
+            "",
+        ]
+    )
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return LocalConfigResult(path=path, executables=resolved)
 
 
 def load_config(root: Path | None = None) -> PaperflowConfig:

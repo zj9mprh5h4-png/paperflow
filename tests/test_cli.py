@@ -22,7 +22,14 @@ def test_cli_help_lists_primary_workflows(capsys: pytest.CaptureFixture[str]) ->
 
     assert exit_info.value.code == 0
     output = capsys.readouterr().out
-    for command in ["build", "open-items", "review-start", "review-import", "word-baseline"]:
+    for command in [
+        "build",
+        "open-items",
+        "init-local",
+        "review-start",
+        "review-import",
+        "word-baseline",
+    ]:
         assert command in output
 
 

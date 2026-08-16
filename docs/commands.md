@@ -16,6 +16,9 @@ uv run paperflow <command> --help
 | `paperflow doctor --format json` | Emit the same checks as schema-versioned JSON with stable IDs, error codes, and ordered remediation steps for agents and other tools. |
 | `paperflow doctor --allow-missing-tools` | Print all Doctor results but return success even when checks fail. Intended only for diagnostics. |
 | `paperflow config-show` | Print the effective merge of defaults, `paperflow.yml`, and `.paperflow.local.yml`. The output can contain private machine paths. |
+| `paperflow init-local` | Create the ignored `.paperflow.local.yml` from the tools found on this machine. Tools on `PATH` are recorded as `null`; a Git, `uv`, or Quarto installation outside `PATH` is searched in the locations documented in [Setup](setup.md) and recorded with its absolute path. Refuses to replace an existing file without `--force`. |
+| `paperflow init-local --quarto PATH` | Record an explicit executable instead of searching for it. `--git` and `--uv` work the same way. A path that does not exist is rejected before the file is written. |
+| `paperflow init-local --reference-docx PATH` | Additionally record a local Word reference DOCX in the generated file. |
 | `paperflow render` | Render only the configured manuscript DOCX. |
 | `paperflow open-items` | Scan configured sources and create the separate OPEN-items Markdown and DOCX reports. |
 | `paperflow build` | Render the manuscript and, when enabled, both OPEN-items reports. |

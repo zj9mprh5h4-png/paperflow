@@ -80,23 +80,38 @@ specific integration that requires it.
 
 ## 3. Configure machine-specific paths
 
-If Git, `uv`, and Quarto are on `PATH`, no local executable settings are needed. Otherwise, install
-them manually and then copy `paperflow.local.example.yml` to `.paperflow.local.yml` to enter the
-executable paths. The configuration points to an existing installation; it never installs a tool.
-
-PowerShell:
-
-```powershell
-Copy-Item paperflow.local.example.yml .paperflow.local.yml
-```
-
-macOS or Linux:
+`.paperflow.local.yml` is ignored by Git and therefore has to be created on every machine. Generate
+it from the tools that are already installed:
 
 ```bash
-cp paperflow.local.example.yml .paperflow.local.yml
+uv run paperflow init-local
 ```
 
-Example:
+The command reports what it found and writes the file:
+
+```text
+local_config: /path/to/project/.paperflow.local.yml
+git: PATH
+uv: PATH
+quarto: C:/Users/<username>/AppData/Local/Programs/Quarto/1.10.18/bin/quarto.exe
+next: uv run paperflow doctor
+```
+
+`PATH` means the tool is already reachable and needs no entry; such tools are written as `null`. An
+installation outside `PATH` is searched in the locations listed in step 1, including the verified
+Windows directories above. The configuration only points to an existing installation; it never
+installs a tool.
+
+If a tool is reported as `not found`, install it, or record an explicit path:
+
+```bash
+uv run paperflow init-local --quarto "C:/Program Files/Quarto/bin/quarto.exe" --force
+```
+
+`--git` and `--uv` work the same way, `--reference-docx` additionally records a local Word template,
+and a path that does not exist is rejected before the file is written. `--force` is required to
+replace an existing file. To write the file by hand instead, copy `paperflow.local.example.yml` to
+`.paperflow.local.yml`:
 
 ```yaml
 executables:
@@ -126,5 +141,5 @@ A successful build creates:
 Later successful builds archive superseded DOCX files under `build/archived/` using their original
 UTC build timestamps. Keep current files closed in Microsoft Word while rebuilding.
 
-If `paperflow doctor` cannot find Quarto, restart the terminal after installing Quarto or configure
-its executable explicitly in `.paperflow.local.yml`.
+If `paperflow doctor` cannot find Quarto, restart the terminal after installing Quarto, or run
+`uv run paperflow init-local --force` to record its location in `.paperflow.local.yml`.
