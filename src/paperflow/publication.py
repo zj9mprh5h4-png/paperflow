@@ -11,6 +11,7 @@ from xml.etree import ElementTree
 from . import __version__
 from .commands import PaperflowError, git, run_command
 from .config import PaperflowConfig
+from .docx_package import read_docx_members, write_docx_members
 from .manifest import git_commit
 
 CUSTOM_PROPERTIES_MEMBER = "docProps/custom.xml"
@@ -155,13 +156,7 @@ def _ensure_custom_relationship(xml: bytes) -> bytes:
 
 def embed_docx_build_metadata(path: Path, values: Mapping[str, str]) -> None:
     """Embed Paperflow provenance without changing the generated document body."""
-    try:
-        with zipfile.ZipFile(path) as source:
-            info_list = source.infolist()
-            members = {item.filename: source.read(item.filename) for item in info_list}
-            infos = {item.filename: item for item in info_list}
-    except (OSError, zipfile.BadZipFile) as exc:
-        raise PaperflowError(f"Could not read generated DOCX metadata: {path}") from exc
+    members, infos = read_docx_members(path)
 
     if CONTENT_TYPES_MEMBER not in members or ROOT_RELATIONSHIPS_MEMBER not in members:
         raise PaperflowError(f"Generated DOCX package metadata is incomplete: {path}")
@@ -179,22 +174,7 @@ def embed_docx_build_metadata(path: Path, values: Mapping[str, str]) -> None:
     except ElementTree.ParseError as exc:
         raise PaperflowError(f"Could not parse generated DOCX metadata: {path}") from exc
 
-    with tempfile.NamedTemporaryFile(
-        prefix=f".{path.stem}-metadata-",
-        suffix=".docx",
-        dir=path.parent,
-        delete=False,
-    ) as temporary:
-        temporary_path = Path(temporary.name)
-
-    try:
-        with zipfile.ZipFile(temporary_path, "w", zipfile.ZIP_DEFLATED) as target:
-            for name, data in members.items():
-                target.writestr(infos.get(name, name), data)
-        temporary_path.replace(path)
-    except BaseException:
-        temporary_path.unlink(missing_ok=True)
-        raise
+    write_docx_members(path, members, infos)
 
 
 def _custom_docx_property(path: Path, name: str) -> str | None:

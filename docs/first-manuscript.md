@@ -121,6 +121,16 @@ The first build can use Quarto's default Word formatting. For publisher or insti
 formatting, follow the [Word-template guide](word-template.md). Keep private or unreviewed DOCX files
 under `templates/` and configure them only through the ignored `.paperflow.local.yml`.
 
+A prepared template usually needs one repair step, because it tends to carry a link to the machine
+it was built on:
+
+```bash
+uv run paperflow sanitize-template --docx "path/to/your-template.docx"
+uv run paperflow init-local --reference-docx templates/reference.local.docx --force
+```
+
+The original file stays untouched; the repaired copy is what Paperflow uses.
+
 Run Doctor again after changing the template:
 
 ```bash

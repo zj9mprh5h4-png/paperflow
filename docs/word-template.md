@@ -69,11 +69,54 @@ The path itself is never printed. It normally contains the account name of whoev
 template, and Doctor output should stay safe to paste into an issue. The part and the kind are
 enough to find the setting in Word.
 
+## Repair a template automatically
+
+`paperflow sanitize-template` writes a repaired copy and removes the machine-specific entries
+Doctor rejects. This is the fast path; the manual route below stays available for whatever the
+command cannot fix.
+
+```bash
+uv run paperflow sanitize-template --docx "path/to/publisher-template.docx"
+uv run paperflow init-local --reference-docx templates/reference.local.docx --force
+uv run paperflow doctor
+```
+
+The template you point at is never modified. The repaired copy goes to
+`templates/reference.local.docx` unless `--out` says otherwise, and replacing an existing copy
+requires `--force`.
+
+The command removes the attached document template, the hyperlink base, the company and manager
+entries, and clears the author and last-modified-by names. Styles, page geometry, headers, footers,
+numbering, and every other part of the package are left byte-identical, because those are exactly
+what a reference document is for.
+
+It reports what it did and what is left:
+
+```text
+template: /path/to/project/templates/reference.local.docx
+removed: attached document template
+removed: hyperlink base
+removed: author name
+remaining: word/_rels/document.xml.rels (external relationship)
+fix: clear the remaining parts in Word; see the table in docs/word-template.md.
+next: uv run paperflow init-local --reference-docx templates/reference.local.docx --force
+next: uv run paperflow doctor
+```
+
+A `remaining:` line means the path sits in a link that cannot be removed without breaking the
+document, such as an image inserted as a link rather than embedded. Deleting that relationship
+would leave a dangling reference, so the command reports it instead and the next section explains
+how to clear it in Word. Doctor stays the deciding check either way.
+
+If the file is a `.dotx` or `.dot`, open it in Word once and save it as `.docx` first; the command
+rejects anything that is not a readable DOCX package.
+
 ## Remove absolute local paths
 
-Publisher and institutional templates regularly carry a path to the machine they were built on.
-Repair a copy of the template; do not disable `word.reject_absolute_paths` to make the build pass.
-Rerun `uv run paperflow doctor` after each change, because one template can carry several.
+Use this route for whatever `sanitize-template` reported as `remaining`, or when you prefer to
+repair the template in Word yourself. Do not disable `word.reject_absolute_paths` to make the
+build pass. Rerun `uv run paperflow doctor` after each change, because one template can carry
+several.
 
 | Reported kind | Where it comes from | How to clear it in Word |
 | --- | --- | --- |
