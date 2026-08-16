@@ -182,9 +182,13 @@ The initial public-release evidence is recorded in
 Word templates are deliberately local and ignored until their metadata, embedded paths, provenance,
 and redistribution rights have been checked. Configure a local template through
 `.paperflow.local.yml` while that review is pending. When Doctor reports an absolute local path in
-a template, it names the DOCX part and the kind of link but never the path itself, and
+a template, it names the DOCX part and the kind of link but never the path itself.
+
+`paperflow sanitize-template --docx <template>` writes a repaired copy without touching the
+original, removing the attached document template, hyperlink base, and author metadata while
+leaving styles and layout byte-identical. It reports anything it could not repair;
 [`docs/word-template.md`](docs/word-template.md#remove-absolute-local-paths) explains which Word
-setting to clear.
+setting to clear for those.
 
 Public collaboration follows the controlled process in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 Report security concerns only through GitHub's private vulnerability-reporting channel described in

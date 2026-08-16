@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 from . import __version__
-from .commands import PaperflowError, find_project_root
+from .commands import PaperflowError, find_project_root, relpath, resolve_input_path
 from .config import NOT_FOUND, load_config, write_local_config
 from .open_items import build_open_items
 from .publication import assert_archive_is_dedicated, remove_archived_versions
@@ -20,6 +20,7 @@ from .review import (
     render_docx,
     start_review,
 )
+from .template import sanitise_reference_docx
 from .validation import doctor
 from .workflow import build_project
 
@@ -79,6 +80,27 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Replace an existing .paperflow.local.yml.",
+    )
+
+    sanitize = subparsers.add_parser(
+        "sanitize-template",
+        help="Copy a Word template and remove the machine-specific links Doctor rejects.",
+    )
+    sanitize.add_argument(
+        "--docx",
+        required=True,
+        type=Path,
+        help="Word template to repair. The file itself is never modified.",
+    )
+    sanitize.add_argument(
+        "--out",
+        type=Path,
+        help="Where to write the repaired copy. Default: templates/reference.local.docx",
+    )
+    sanitize.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing output file.",
     )
 
     start = subparsers.add_parser("review-start", help="Create a Word review round.")
@@ -217,6 +239,36 @@ def main(argv: list[str] | None = None) -> int:
             missing = [tool for tool, value in result.executables.items() if value == NOT_FOUND]
             for tool in missing:
                 print(f"fix: install {tool}, or rerun with --{tool} pointing at its executable.")
+            print("next: uv run paperflow doctor")
+            return 0
+        if args.command == "sanitize-template":
+            root = find_project_root()
+            target = (
+                resolve_input_path(args.out)
+                if args.out is not None
+                else root / "templates" / "reference.local.docx"
+            )
+            result = sanitise_reference_docx(
+                source=resolve_input_path(args.docx),
+                target=target,
+                force=args.force,
+            )
+            print(f"template: {result.path}")
+            for item in result.removed:
+                print(f"removed: {item}")
+            if not result.removed:
+                print("removed: nothing; none of the known machine-specific links were present")
+            for item in result.remaining:
+                print(f"remaining: {item}")
+            if result.remaining:
+                print(
+                    "fix: clear the remaining parts in Word; see the table in "
+                    "docs/word-template.md."
+                )
+            print(
+                "next: uv run paperflow init-local --reference-docx "
+                f"{relpath(result.path, root)} --force"
+            )
             print("next: uv run paperflow doctor")
             return 0
         if args.command == "review-start":
