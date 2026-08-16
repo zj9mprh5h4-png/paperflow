@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from . import __version__
 from .commands import PaperflowError, find_project_root
 from .config import load_config
 from .open_items import build_open_items
@@ -23,7 +24,14 @@ from .workflow import build_project
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="paperflow")
+    parser = argparse.ArgumentParser(
+        prog="paperflow",
+        description=(
+            "Build configured Quarto manuscripts and manage controlled Word review rounds."
+        ),
+        epilog="Run 'paperflow <command> --help' for command-specific options.",
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     doctor_parser = subparsers.add_parser("doctor", help="Check local workflow prerequisites.")
@@ -33,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Report missing tools but exit successfully.",
     )
 
-    subparsers.add_parser("render", help="Render manuscript/index.qmd to build/paper.docx.")
+    subparsers.add_parser("render", help="Render only the configured manuscript DOCX.")
     subparsers.add_parser(
         "build",
         help="Build the manuscript DOCX and the configured Open Items DOCX.",
@@ -49,18 +57,30 @@ def build_parser() -> argparse.ArgumentParser:
 
     start = subparsers.add_parser("review-start", help="Create a Word review round.")
     start.add_argument("--round", required=True, type=int, dest="round_number")
-    start.add_argument("--reviewer", required=True)
-    start.add_argument("--allow-dirty", action="store_true")
-    start.add_argument("--force", action="store_true")
+    start.add_argument("--reviewer", required=True, help="Stable reviewer identifier.")
+    start.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help="Explicitly permit a non-clean Git baseline.",
+    )
+    start.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing local round directory.",
+    )
 
     import_parser = subparsers.add_parser(
         "review-import",
         help="Import a returned reviewer DOCX.",
     )
     import_parser.add_argument("--round", required=True, type=int, dest="round_number")
-    import_parser.add_argument("--reviewer", required=True)
-    import_parser.add_argument("--docx", required=True, type=Path)
-    import_parser.add_argument("--force", action="store_true")
+    import_parser.add_argument("--reviewer", required=True, help="Reviewer identifier from start.")
+    import_parser.add_argument("--docx", required=True, type=Path, help="Returned reviewer DOCX.")
+    import_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing archived import for this reviewer.",
+    )
 
     diff_parser = subparsers.add_parser("review-diff", help="Regenerate an accepted Markdown diff.")
     diff_parser.add_argument("--round", required=True, type=int, dest="round_number")
@@ -81,7 +101,10 @@ def build_parser() -> argparse.ArgumentParser:
     word_promote.add_argument("--name", default="article")
     word_promote.add_argument("--force", action="store_true")
 
-    clean = subparsers.add_parser("clean", help="Remove generated files under build/.")
+    clean = subparsers.add_parser(
+        "clean",
+        help="Remove files under the configured output directory.",
+    )
     clean.add_argument(
         "--yes",
         action="store_true",

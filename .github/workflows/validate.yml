@@ -6,24 +6,43 @@ on:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    permissions:
+      contents: read
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: quarto-dev/quarto-actions/setup@v2
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
 
       - name: Sync environment
         run: uv sync --frozen --extra dev
 
       - name: Doctor
         run: uv run paperflow doctor
+
+      - name: CLI
+        run: |
+          uv run paperflow --version
+          uv run paperflow --help
 
       - name: Lint
         run: uv run ruff check .
