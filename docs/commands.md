@@ -8,6 +8,10 @@ uv run paperflow --help
 uv run paperflow <command> --help
 ```
 
+A file passed with `--docx` is resolved against the current working directory, like any other
+command-line tool, and `~` is expanded. Configured paths in `paperflow.yml` behave differently:
+they always resolve from the repository root.
+
 ## Build and configuration
 
 | Command | Purpose |

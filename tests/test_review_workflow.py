@@ -262,6 +262,45 @@ def test_word_baseline_promotion_preserves_frontmatter_and_copies_media(tmp_path
     assert promotion.unreferenced == ()
 
 
+def test_relative_docx_arguments_resolve_against_the_working_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "_quarto.yml").write_text("project:\n  type: default\n", encoding="utf-8")
+    (root / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+    (root / "manuscript").mkdir()
+    (root / "manuscript" / "index.qmd").write_text("authoritative qmd\n", encoding="utf-8")
+    inbox = root / "inbox"
+    inbox.mkdir()
+    (inbox / "Article.docx").write_bytes(b"the file the user meant")
+    # Resolving against the project root instead of the working directory would silently
+    # pick this file up instead of the one next to the user.
+    (root / "Article.docx").write_bytes(b"decoy at the project root")
+
+    def fake_qmd_to_markdown(source: Path, output: Path, *, root: Path) -> None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+
+    def fake_docx_to_markdown(docx: Path, output: Path, *, track_changes: str, root: Path) -> None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(docx.read_text(encoding="utf-8"), encoding="utf-8")
+
+    monkeypatch.setattr(review, "qmd_to_markdown", fake_qmd_to_markdown)
+    monkeypatch.setattr(review, "docx_to_markdown", fake_docx_to_markdown)
+    monkeypatch.setattr(review, "git_commit", lambda root: None)
+    monkeypatch.chdir(inbox)
+
+    outputs = review.import_preworkflow_word_baseline(
+        docx=Path("Article.docx"),
+        root=root,
+        force=True,
+    )
+
+    assert outputs["incoming"].read_bytes() == b"the file the user meant"
+
+
 def test_word_promotion_restores_open_markers_escaped_by_the_converter(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     root.mkdir()

@@ -180,6 +180,16 @@ def require_tool(name: str, *, root: Path | None = None) -> str:
     return path
 
 
+def resolve_input_path(value: Path | str) -> Path:
+    """Resolve a user-supplied file argument against the current working directory.
+
+    Every command that reads a file from outside the project uses this, so the same
+    relative argument names the same file regardless of which command receives it or
+    which directory it is typed in.
+    """
+    return Path(value).expanduser().resolve()
+
+
 def ensure_inside_project(path: Path, root: Path) -> Path:
     resolved = path.resolve()
     try:

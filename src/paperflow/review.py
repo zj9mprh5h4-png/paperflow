@@ -15,6 +15,7 @@ from .commands import (
     git,
     relpath,
     require_tool,
+    resolve_input_path,
     run_command,
 )
 from .config import PaperflowConfig, load_config
@@ -176,9 +177,7 @@ def import_preworkflow_word_baseline(
 ) -> dict[str, Path]:
     project_root = root or find_project_root()
     config = load_config(project_root)
-    source_docx = docx.expanduser()
-    if not source_docx.is_absolute():
-        source_docx = (project_root / source_docx).resolve()
+    source_docx = resolve_input_path(docx)
     if not source_docx.exists():
         raise PaperflowError(f"Word baseline DOCX does not exist: {docx}")
 
@@ -421,9 +420,7 @@ def import_review(
             "Review baseline DOCX no longer matches its manifest; refusing import."
         )
 
-    source_docx = incoming_docx.expanduser()
-    if not source_docx.is_absolute():
-        source_docx = (Path.cwd() / source_docx).resolve()
+    source_docx = resolve_input_path(incoming_docx)
     if not source_docx.exists():
         raise PaperflowError(f"Incoming DOCX does not exist: {incoming_docx}")
     try:
