@@ -1,0 +1,36 @@
+.venv/
+.uv-cache/
+.tools/
+.work/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.quarto/
+
+build/*
+!build/.gitkeep
+.paperflow-*.docx
+
+# Review artifacts may contain names, comments, and unpublished text.
+reviews/round-*/baseline/
+reviews/round-*/outgoing/
+reviews/round-*/incoming/
+reviews/round-*/derived/
+reviews/round-*/manifest.json
+reviews/preworkflow-word-baseline/
+
+# Local Word templates and Office lock files.
+templates/*.docx
+~$*.docx
+
+# Local user configuration.
+.paperflow.local.yml
+
+.DS_Store
+Thumbs.db
+**/*.quarto_ipynb
+
+/.quarto/

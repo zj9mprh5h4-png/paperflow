@@ -1,0 +1,16 @@
+project:
+  type: default
+  output-dir: build
+
+format:
+  docx:
+    toc: false
+    number-sections: false
+
+execute:
+  echo: false
+  warning: false
+  error: true
+
+bibliography: references/references.bib
+lang: en

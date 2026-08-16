@@ -1,0 +1,37 @@
+---
+title: "Smoke Fixture"
+format:
+  docx:
+    toc: false
+bibliography: references.bib
+---
+
+# Heading
+
+This is normal text with **bold**, *italic*, unicode characters (µ, Δ, ä), and one citation [@smith2024].
+
+- first item
+- second item
+
+Inline math: $E = mc^2$.
+
+$$
+\hat{\beta} = (X^\top X)^{-1}X^\top y
+$$ {#eq-ols}
+
+See @eq-ols for the display equation.
+
+![Smoke figure caption.](figure-smoke.svg){#fig-smoke width="60%"}
+
+| Condition | Value |
+|---|---:|
+| Control | 1.0 |
+| FUS | 1.2 |
+
+: Smoke table caption {#tbl-smoke}
+
+This sentence has a footnote.[^note]
+
+[^note]: Smoke-test footnote.
+
+# References

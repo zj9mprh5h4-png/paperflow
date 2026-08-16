@@ -1,0 +1,9 @@
+---
+from: markdown+tex_math_single_backslash
+---
+
+{{< include sections/front-matter.md >}}
+
+{{< include sections/abstract.md >}}
+
+{{< include sections/main-text.md >}}

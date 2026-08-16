@@ -1,0 +1,10 @@
+# Copy this file to .paperflow.local.yml for machine-specific overrides.
+# .paperflow.local.yml is ignored by Git.
+
+executables:
+  quarto: null
+  git: null
+  uv: null
+
+word:
+  reference_docx: null

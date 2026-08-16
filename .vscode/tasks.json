@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Paperflow: Doctor",
+      "type": "shell",
+      "command": "uv",
+      "args": ["run", "paperflow", "doctor"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Paperflow: Build DOCX files",
+      "type": "shell",
+      "command": "uv",
+      "args": ["run", "paperflow", "build"],
+      "group": {"kind": "build", "isDefault": true},
+      "problemMatcher": []
+    },
+    {
+      "label": "Paperflow: Test",
+      "type": "shell",
+      "command": "uv",
+      "args": ["run", "pytest"],
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

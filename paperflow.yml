@@ -1,0 +1,43 @@
+schema_version: 1
+
+project:
+  name: paperflow-demo
+  language: en
+  manuscript: manuscript/index.qmd
+  formatting_rules: manuscript/manuscript_formatting_rules.md
+
+paths:
+  output_dir: build
+  work_dir: .work
+  review_dir: reviews
+
+build:
+  manuscript_filename: paper.docx
+  run_pre_render_hook: true
+
+word:
+  reference_docx: null
+  protect_inline_math: true
+  reject_absolute_paths: true
+
+open_items:
+  enabled: true
+  marker_pattern: '\[\[OPEN:\s*(.*?)\]\]'
+  source_globs:
+    - manuscript/**/*.md
+    - manuscript/**/*.qmd
+  exclude_globs:
+    - manuscript/archived/**
+    - manuscript/**/archived/**
+    - manuscript/manuscript_formatting_rules.md
+  output_markdown: build/open_items.md
+  output_docx: build/open_items.docx
+
+review:
+  require_clean_git: true
+  auto_apply_word_changes: false
+
+executables:
+  git: null
+  uv: null
+  quarto: null

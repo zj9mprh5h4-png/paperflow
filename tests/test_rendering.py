@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from paperflow import rendering
+from paperflow.config import load_config
+
+
+def test_render_finds_quarto_output_in_project_output_directory(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "manuscript" / "index.qmd"
+    source.parent.mkdir()
+    source.write_text("# Test\n", encoding="utf-8")
+    output = tmp_path / "build" / "paper.docx"
+    config = load_config(tmp_path)
+    calls: list[list[str]] = []
+
+    monkeypatch.setattr(rendering, "require_tool", lambda *args, **kwargs: "quarto")
+    monkeypatch.setattr(rendering, "docx_core_files_present", lambda path: True)
+    monkeypatch.setattr(rendering, "docx_contains_absolute_paths", lambda path: False)
+    monkeypatch.setattr(rendering, "protect_docx_inline_math", lambda path: 0)
+
+    def fake_run_command(args: list[str], **kwargs) -> object:
+        calls.append(args)
+        name = args[args.index("--output") + 1]
+        target = tmp_path / "quarto-output" / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"x" * 1001)
+        return object()
+
+    monkeypatch.setattr(rendering, "run_command", fake_run_command)
+
+    assert rendering.render_qmd_to_docx(source, output, config=config) == output
+    assert output.read_bytes() == b"x" * 1001
+    assert "--output-dir" not in calls[0]

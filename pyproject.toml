@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paperflow"
+version = "0.1.0.dev0"
+description = "Reproducible Quarto-to-Word and Word-review workflows."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit>=3.8",
+  "pytest>=8.0",
+  "ruff>=0.6",
+  "uv>=0.12.1",
+]
+
+[project.scripts]
+paperflow = "paperflow.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/paperflow"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
