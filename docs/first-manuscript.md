@@ -20,6 +20,10 @@ cd MANUSCRIPT-REPOSITORY
 Paperflow updates are not applied to an existing manuscript repository automatically. Adopt later
 workflow changes only after reviewing them against the manuscript's configuration and local files.
 
+`AGENTS.md` provides optional instructions for Codex-compatible agents and is copied with the
+template. Review and adapt it together with `docs/agent-guide.md`, or remove it if the project does
+not use an agent. Paperflow itself does not require Codex.
+
 Keep `LICENSE` and `LICENSE-SCOPE.md` for the inherited Paperflow workflow. The MIT License does not
 automatically apply to original manuscript text, bibliographies, research data, figures, reviews,
 or templates that you add. Document the rights status of that project content separately before

@@ -40,6 +40,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Report missing tools but exit successfully.",
     )
+    doctor_parser.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="Select human-readable text or machine-readable JSON output.",
+    )
 
     subparsers.add_parser("render", help="Render only the configured manuscript DOCX.")
     subparsers.add_parser(
@@ -135,7 +141,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "doctor":
-            return doctor(allow_missing_tools=args.allow_missing_tools)
+            return doctor(
+                allow_missing_tools=args.allow_missing_tools,
+                output_format=args.format,
+            )
         if args.command == "render":
             docx = render_docx()
             print(docx)
@@ -199,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
             return clean_build(yes=args.yes)
     except PaperflowError as exc:
         print(f"paperflow: {exc}", file=sys.stderr)
+        for step in exc.remediation:
+            print(f"fix: {step}", file=sys.stderr)
         return 2
     parser.error(f"Unhandled command: {args.command}")
     return 2

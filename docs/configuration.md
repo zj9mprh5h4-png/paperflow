@@ -21,6 +21,17 @@ uv run paperflow doctor
 `config-show` may display local executable and template paths. Do not paste its output into public
 issues without checking it first.
 
+For agents and scripts, Doctor can return schema-versioned JSON with stable check IDs and ordered
+repair steps:
+
+```bash
+uv run paperflow doctor --format json
+```
+
+Use `docs/agent-guide.md` for the deterministic diagnosis sequence. A parsed YAML file is not by
+itself proof of a working configuration; Doctor also checks configured sources, tools, the active
+environment, Git, and an optional Word reference document.
+
 ## Which file should contain a setting?
 
 Commit settings that define the shared manuscript workflow to `paperflow.yml`. Put paths that vary

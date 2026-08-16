@@ -48,8 +48,11 @@ def test_unknown_configuration_key_is_rejected(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(PaperflowError, match="Unknown project"):
+    with pytest.raises(PaperflowError, match="Unknown project") as error:
         load_config(tmp_path)
+
+    assert error.value.code == "config.unknown_keys"
+    assert "paperflow.yml" in error.value.remediation[0]
 
 
 def test_output_path_cannot_escape_project(tmp_path: Path) -> None:
@@ -58,8 +61,11 @@ def test_output_path_cannot_escape_project(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(PaperflowError, match="must stay inside"):
+    with pytest.raises(PaperflowError, match="must stay inside") as error:
         load_config(tmp_path)
+
+    assert error.value.code == "config.path_outside_project"
+    assert "project-relative path" in error.value.remediation[0]
 
 
 def test_word_review_auto_apply_cannot_be_enabled(tmp_path: Path) -> None:
@@ -68,8 +74,11 @@ def test_word_review_auto_apply_cannot_be_enabled(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(PaperflowError, match="must remain false"):
+    with pytest.raises(PaperflowError, match="must remain false") as error:
         load_config(tmp_path)
+
+    assert error.value.code == "config.review_auto_apply"
+    assert "review.auto_apply_word_changes: false" in error.value.remediation[0]
 
 
 def test_local_executable_override_is_resolved(tmp_path: Path) -> None:

@@ -136,11 +136,25 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     try:
         loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
-        raise PaperflowError(f"Could not read configuration {path}: {exc}") from exc
+        raise PaperflowError(
+            f"Could not read configuration {path}: {exc}",
+            code="config.read",
+            remediation=(
+                f"Open {path.name} and correct the reported YAML syntax or file-access error.",
+                "Keep indentation consistent and use spaces rather than tabs.",
+            ),
+        ) from exc
     if loaded is None:
         return {}
     if not isinstance(loaded, dict):
-        raise PaperflowError(f"Configuration must contain a YAML mapping: {path}")
+        raise PaperflowError(
+            f"Configuration must contain a YAML mapping: {path}",
+            code="config.root_mapping",
+            remediation=(
+                f"Replace the top level of {path.name} with YAML key-value mappings.",
+                "Start from paperflow.yml or paperflow.local.example.yml as appropriate.",
+            ),
+        )
     return loaded
 
 
@@ -149,17 +163,33 @@ def _validate_keys(
     template: dict[str, Any],
     *,
     prefix: str = "",
+    source: str,
 ) -> None:
     unknown = sorted(set(candidate).difference(template))
     if unknown:
         location = prefix or "configuration"
-        raise PaperflowError(f"Unknown {location} key(s): {', '.join(unknown)}")
+        raise PaperflowError(
+            f"Unknown {location} key(s): {', '.join(unknown)}",
+            code="config.unknown_keys",
+            remediation=(
+                f"Correct or remove the listed key(s) in {source}.",
+                "Use docs/configuration.md for the supported schema_version 1 keys.",
+            ),
+        )
     for key, value in candidate.items():
         expected = template[key]
         if isinstance(expected, dict):
             if not isinstance(value, dict):
-                raise PaperflowError(f"Configuration key {prefix}{key} must be a mapping.")
-            _validate_keys(value, expected, prefix=f"{prefix}{key}.")
+                label = f"{prefix}{key}"
+                raise PaperflowError(
+                    f"Configuration key {label} must be a mapping.",
+                    code="config.mapping",
+                    remediation=(
+                        f"In {source}, make {label} a YAML mapping with indented child keys.",
+                        "Compare the section with docs/configuration.md.",
+                    ),
+                )
+            _validate_keys(value, expected, prefix=f"{prefix}{key}.", source=source)
 
 
 def _merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -174,19 +204,37 @@ def _merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
 
 def _string(value: Any, label: str, *, allow_empty: bool = False) -> str:
     if not isinstance(value, str) or (not allow_empty and not value.strip()):
-        raise PaperflowError(f"Configuration key {label} must be a non-empty string.")
+        raise PaperflowError(
+            f"Configuration key {label} must be a non-empty string.",
+            code="config.string",
+            remediation=(
+                f"Set {label} to a non-empty YAML string in paperflow.yml or the local override.",
+            ),
+        )
     return value
 
 
 def _boolean(value: Any, label: str) -> bool:
     if not isinstance(value, bool):
-        raise PaperflowError(f"Configuration key {label} must be true or false.")
+        raise PaperflowError(
+            f"Configuration key {label} must be true or false.",
+            code="config.boolean",
+            remediation=(
+                f"Set {label} to the unquoted YAML boolean true or false.",
+            ),
+        )
     return value
 
 
 def _string_list(value: Any, label: str) -> tuple[str, ...]:
     if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
-        raise PaperflowError(f"Configuration key {label} must be a list of strings.")
+        raise PaperflowError(
+            f"Configuration key {label} must be a list of strings.",
+            code="config.string_list",
+            remediation=(
+                f"Set {label} to a YAML list whose items are non-empty strings.",
+            ),
+        )
     return tuple(value)
 
 
@@ -198,7 +246,13 @@ def _inside_project(root: Path, value: Any, label: str) -> Path:
         resolved.relative_to(root.resolve())
     except ValueError as exc:
         raise PaperflowError(
-            f"Configuration path {label} must stay inside the project: {text}"
+            f"Configuration path {label} must stay inside the project: {text}",
+            code="config.path_outside_project",
+            remediation=(
+                f"Set {label} to a project-relative path that does not escape with '..'.",
+                "Use .paperflow.local.yml only for permitted machine-local executable "
+                "and Word-template paths.",
+            ),
         ) from exc
     return resolved
 
@@ -225,11 +279,18 @@ def load_config(root: Path | None = None) -> PaperflowConfig:
         if not path.exists():
             continue
         override = _read_yaml(path)
-        _validate_keys(override, DEFAULT_CONFIG)
+        _validate_keys(override, DEFAULT_CONFIG, source=path.name)
         merged = _merge(merged, override)
 
     if merged["schema_version"] != 1:
-        raise PaperflowError("Only paperflow configuration schema_version 1 is supported.")
+        raise PaperflowError(
+            "Only paperflow configuration schema_version 1 is supported.",
+            code="config.schema_version",
+            remediation=(
+                "Set schema_version: 1 at the top level of paperflow.yml.",
+                "Migrate unsupported keys using docs/configuration.md before rerunning Doctor.",
+            ),
+        )
 
     project = merged["project"]
     paths = merged["paths"]
@@ -243,18 +304,45 @@ def load_config(root: Path | None = None) -> PaperflowConfig:
     try:
         compiled = re.compile(marker_pattern)
     except re.error as exc:
-        raise PaperflowError(f"Invalid open_items.marker_pattern: {exc}") from exc
+        raise PaperflowError(
+            f"Invalid open_items.marker_pattern: {exc}",
+            code="config.marker_pattern",
+            remediation=(
+                "Correct open_items.marker_pattern so it is a valid regular expression.",
+                r"Restore the default '\[\[OPEN:\s*(.*?)\]\]' if custom matching is not required.",
+            ),
+        ) from exc
     if compiled.groups != 1:
-        raise PaperflowError("open_items.marker_pattern must contain exactly one capture group.")
+        raise PaperflowError(
+            "open_items.marker_pattern must contain exactly one capture group.",
+            code="config.marker_capture_group",
+            remediation=(
+                "Use exactly one (...) capture group for the OPEN-item text.",
+                r"Restore the default '\[\[OPEN:\s*(.*?)\]\]' if custom matching is not required.",
+            ),
+        )
 
     auto_apply = _boolean(review["auto_apply_word_changes"], "review.auto_apply_word_changes")
     if auto_apply:
-        raise PaperflowError("review.auto_apply_word_changes must remain false for source safety.")
+        raise PaperflowError(
+            "review.auto_apply_word_changes must remain false for source safety.",
+            code="config.review_auto_apply",
+            remediation=(
+                "Set review.auto_apply_word_changes: false in paperflow.yml.",
+                "Use review-import and review the generated Markdown diff before changing QMD.",
+            ),
+        )
 
     filename = _string(build["manuscript_filename"], "build.manuscript_filename")
     if Path(filename).name != filename or not filename.lower().endswith(".docx"):
         raise PaperflowError(
-            "build.manuscript_filename must be a DOCX filename without directories."
+            "build.manuscript_filename must be a DOCX filename without directories.",
+            code="config.manuscript_filename",
+            remediation=(
+                "Set build.manuscript_filename to a bare filename ending in .docx, "
+                "for example manuscript.docx.",
+                "Configure the containing directory separately with paths.output_dir.",
+            ),
         )
 
     return PaperflowConfig(

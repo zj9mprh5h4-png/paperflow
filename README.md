@@ -89,6 +89,12 @@ word:
 Run `uv run paperflow config-show` to inspect the effective merged configuration and
 `uv run paperflow doctor` to validate configured paths and tools.
 
+For machine-readable diagnostics with exact repair steps, use:
+
+```bash
+uv run paperflow doctor --format json
+```
+
 See the [complete configuration reference](docs/configuration.md) for every supported field. To
 start a new project, follow the [First manuscript guide](docs/first-manuscript.md). The
 [Word-template guide](docs/word-template.md) explains how to keep publisher or institutional DOCX
@@ -96,6 +102,13 @@ templates local and validate them before use.
 
 The [command reference](docs/commands.md) lists every CLI command, safety flag, output, and exit
 status.
+
+## Optional AI-agent guidance
+
+[`AGENTS.md`](AGENTS.md) supplies a safe project baseline to Codex-compatible agents and points to
+the deterministic [`docs/agent-guide.md`](docs/agent-guide.md) workflow. Both files are copied into
+repositories created from this template and may be adapted or removed deliberately. Paperflow
+itself does not require Codex or another AI agent.
 
 ## Open placeholders
 

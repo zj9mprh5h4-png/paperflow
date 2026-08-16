@@ -25,6 +25,17 @@ def test_cli_help_lists_primary_workflows(capsys: pytest.CaptureFixture[str]) ->
         assert command in output
 
 
+def test_doctor_help_lists_machine_readable_output(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        main(["doctor", "--help"])
+
+    assert exit_info.value.code == 0
+    output = capsys.readouterr().out
+    assert "--format {text,json}" in output
+
+
 def test_expected_workflow_error_returns_two(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["clean"]) == 2
     assert "without --yes" in capsys.readouterr().err
