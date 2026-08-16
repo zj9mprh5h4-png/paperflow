@@ -266,8 +266,8 @@ def doctor(*, allow_missing_tools: bool = False, output_format: str = "text") ->
         ),
         "quarto": (
             "Install Quarto from https://quarto.org/docs/download/ and restart the terminal.",
-            "If Quarto is installed outside PATH, set executables.quarto in "
-            ".paperflow.local.yml.",
+            "If Quarto is installed outside PATH, run uv run paperflow init-local to record "
+            "its location in .paperflow.local.yml.",
         ),
     }
     for tool in ["git", "uv", "quarto"]:

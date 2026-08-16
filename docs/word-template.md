@@ -20,6 +20,14 @@ word:
   reference_docx: "templates/reference.local.docx"
 ```
 
+`paperflow init-local` can record the entry while creating that file:
+
+```bash
+uv run paperflow init-local --reference-docx templates/reference.local.docx
+```
+
+Add `--force` when `.paperflow.local.yml` already exists.
+
 Absolute paths are supported for templates stored elsewhere, but a repository-relative path is
 easier to move between machines when each user supplies the file locally.
 

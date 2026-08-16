@@ -89,7 +89,17 @@ requires `paperflow clean --yes --include-archive`.
 ## User configuration
 
 Version-controlled project settings live in `paperflow.yml`. Machine-specific overrides belong in
-the ignored `.paperflow.local.yml`; copy `paperflow.local.example.yml` as a starting point.
+the ignored `.paperflow.local.yml`. Generate that file from the tools present on the current
+machine:
+
+```bash
+uv run paperflow init-local
+```
+
+Tools on `PATH` need no entry and are recorded as `null`. An installation outside `PATH` is searched
+in the locations documented in [`docs/setup.md`](docs/setup.md) and recorded with its absolute path;
+`--quarto`, `--git`, and `--uv` record an explicit path instead. `paperflow.local.example.yml`
+remains available as a starting point for editing the file by hand.
 
 ```yaml
 build:

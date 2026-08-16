@@ -9,7 +9,7 @@ import yaml
 
 from . import __version__
 from .commands import PaperflowError, find_project_root
-from .config import load_config
+from .config import NOT_FOUND, load_config, write_local_config
 from .open_items import build_open_items
 from .publication import assert_archive_is_dedicated, remove_archived_versions
 from .review import (
@@ -60,6 +60,25 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser(
         "config-show",
         help="Print the effective merged Paperflow configuration.",
+    )
+
+    init_local = subparsers.add_parser(
+        "init-local",
+        help="Create .paperflow.local.yml from the tools found on this machine.",
+    )
+    for tool in ("git", "uv", "quarto"):
+        init_local.add_argument(
+            f"--{tool}",
+            help=f"Record an explicit {tool} executable instead of searching for it.",
+        )
+    init_local.add_argument(
+        "--reference-docx",
+        help="Record a local Word reference DOCX path in the generated file.",
+    )
+    init_local.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing .paperflow.local.yml.",
     )
 
     start = subparsers.add_parser("review-start", help="Create a Word review round.")
@@ -180,6 +199,25 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "config-show":
             print(yaml.safe_dump(load_config().raw, sort_keys=False).rstrip())
+            return 0
+        if args.command == "init-local":
+            result = write_local_config(
+                find_project_root(),
+                executables={
+                    tool: value
+                    for tool in ("git", "uv", "quarto")
+                    if (value := getattr(args, tool)) is not None
+                },
+                reference_docx=args.reference_docx,
+                force=args.force,
+            )
+            print(f"local_config: {result.path}")
+            for tool, location in result.executables.items():
+                print(f"{tool}: {location}")
+            missing = [tool for tool, value in result.executables.items() if value == NOT_FOUND]
+            for tool in missing:
+                print(f"fix: install {tool}, or rerun with --{tool} pointing at its executable.")
+            print("next: uv run paperflow doctor")
             return 0
         if args.command == "review-start":
             outgoing = start_review(

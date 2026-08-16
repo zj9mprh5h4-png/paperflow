@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from paperflow import config as config_module
 from paperflow.commands import PaperflowError, executable, python_is_venv
-from paperflow.config import load_config
+from paperflow.config import load_config, write_local_config
 
 
 def test_project_and_local_configuration_are_merged(tmp_path: Path) -> None:
@@ -141,3 +142,96 @@ def test_python_is_venv_rejects_the_base_interpreter(
     monkeypatch.setattr("paperflow.commands.sys.base_prefix", prefix)
 
     assert not python_is_venv(tmp_path)
+
+
+def test_init_local_records_only_executables_missing_from_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    quarto = tmp_path / "tools" / "quarto.exe"
+    quarto.parent.mkdir()
+    quarto.write_text("", encoding="utf-8")
+    monkeypatch.setattr(
+        config_module.shutil,
+        "which",
+        lambda name: None if name == "quarto" else f"/usr/bin/{name}",
+    )
+    monkeypatch.setattr(
+        config_module,
+        "executable",
+        lambda name, *, root=None: str(quarto) if name == "quarto" else None,
+    )
+
+    result = write_local_config(
+        tmp_path,
+        reference_docx="templates/reference.local.docx",
+    )
+
+    assert result.path == tmp_path / ".paperflow.local.yml"
+    assert result.executables == {
+        "git": config_module.ON_PATH,
+        "uv": config_module.ON_PATH,
+        "quarto": quarto.resolve().as_posix(),
+    }
+    config = load_config(tmp_path)
+    assert config.executables.quarto == quarto.resolve().as_posix()
+    assert config.executables.git is None
+    assert config.executables.uv is None
+    assert config.word.reference_docx == (
+        tmp_path / "templates" / "reference.local.docx"
+    ).resolve()
+
+
+def test_init_local_finds_a_quarto_installed_outside_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    quarto = tmp_path / "Programs" / "Quarto" / "1.10.18" / "bin" / "quarto.exe"
+    quarto.parent.mkdir(parents=True)
+    quarto.write_text("", encoding="utf-8")
+    monkeypatch.setattr(config_module.shutil, "which", lambda name: None)
+    monkeypatch.setattr(config_module, "executable", lambda name, *, root=None: None)
+    monkeypatch.setattr(
+        config_module,
+        "WELL_KNOWN_EXECUTABLES",
+        {
+            "git": (),
+            "uv": (),
+            "quarto": (str(tmp_path / "Programs" / "Quarto" / "*" / "bin" / "quarto.exe"),),
+        },
+    )
+
+    result = write_local_config(tmp_path)
+
+    assert result.executables["quarto"] == quarto.resolve().as_posix()
+    assert result.executables["git"] == config_module.NOT_FOUND
+    assert load_config(tmp_path).executables.quarto == quarto.resolve().as_posix()
+
+
+def test_init_local_rejects_an_explicit_executable_that_does_not_exist(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config_module.shutil, "which", lambda name: f"/usr/bin/{name}")
+
+    with pytest.raises(PaperflowError, match="does not exist") as error:
+        write_local_config(tmp_path, executables={"quarto": "tools/missing-quarto.exe"})
+
+    assert error.value.code == "init_local.executable_missing"
+    assert not (tmp_path / ".paperflow.local.yml").exists()
+
+
+def test_init_local_refuses_to_replace_an_existing_file_without_force(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    existing = tmp_path / ".paperflow.local.yml"
+    original = "executables:\n  quarto: tools/quarto.exe\n"
+    existing.write_text(original, encoding="utf-8")
+    monkeypatch.setattr(config_module.shutil, "which", lambda name: f"/usr/bin/{name}")
+
+    with pytest.raises(PaperflowError, match="already exists") as error:
+        write_local_config(tmp_path)
+
+    assert error.value.code == "init_local.exists"
+    assert existing.read_text(encoding="utf-8") == original
+
+    assert write_local_config(tmp_path, force=True).path == existing
+    assert "paperflow init-local" in existing.read_text(encoding="utf-8")
+    assert load_config(tmp_path).executables.quarto is None
