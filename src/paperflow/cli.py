@@ -116,23 +116,39 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Confirm removal of generated build files.",
     )
+    clean.add_argument(
+        "--include-archive",
+        action="store_true",
+        help="Also remove archived DOCX versions (requires --yes).",
+    )
     return parser
 
 
-def clean_build(*, yes: bool) -> int:
+def clean_build(*, yes: bool, include_archive: bool = False) -> int:
     if not yes:
         raise PaperflowError("Refusing to clean build/ without --yes.")
     root = find_project_root()
-    build = load_config(root).paths.output_dir
+    config = load_config(root)
+    build = config.paths.output_dir
+    archive = config.build.archive_dir
     build.mkdir(exist_ok=True)
     for child in build.iterdir():
         if child.name == ".gitkeep":
+            continue
+        if not include_archive and archive.is_relative_to(child):
             continue
         if child.is_dir():
             shutil.rmtree(child)
         else:
             child.unlink()
+    if include_archive and archive.exists() and not archive.is_relative_to(build):
+        if archive.is_dir():
+            shutil.rmtree(archive)
+        else:
+            archive.unlink()
     print(f"Cleaned generated files in {build}")
+    if not include_archive:
+        print(f"Preserved archived DOCX versions in {archive}")
     return 0
 
 
@@ -205,7 +221,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{label}: {path}")
             return 0
         if args.command == "clean":
-            return clean_build(yes=args.yes)
+            return clean_build(
+                yes=args.yes,
+                include_archive=args.include_archive,
+            )
     except PaperflowError as exc:
         print(f"paperflow: {exc}", file=sys.stderr)
         for step in exc.remediation:

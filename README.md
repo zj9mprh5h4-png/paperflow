@@ -19,8 +19,9 @@ not a fork, and later Paperflow changes are not applied to manuscript repositori
 
 ## What works today
 
-- Render `manuscript/index.qmd` to `build/paper.docx` with Quarto and Pandoc.
-- Generate `build/open_items.docx` from every current `[[OPEN: ...]]` placeholder.
+- Render `manuscript/index.qmd` to the stable `build/paper_current.docx` path.
+- Generate `build/open_items_current.docx` from every current `[[OPEN: ...]]` placeholder.
+- Archive superseded DOCX files with their original UTC build timestamp and provenance.
 - Preserve editable Word equations and protect inline equations from line breaks.
 - Start a Word review round from a clean Git commit.
 - Archive the exact outgoing review baseline and record hashes and tool versions.
@@ -66,12 +67,24 @@ uv run paperflow build
 
 The results are:
 
-- `build/paper.docx` — the editable manuscript;
-- `build/open_items.docx` — a separate checklist generated from the current placeholders;
+- `build/paper_current.docx` — the editable manuscript;
+- `build/open_items_current.docx` — a separate checklist from the current placeholders;
 - `build/open_items.md` — the same checklist in reviewable text form.
 
 `paperflow render` remains available when only the manuscript DOCX is needed. Quarto uses its
 default Word reference document unless a template is configured.
+
+Current paths stay unchanged so Microsoft Word's **Recent** entry remains useful. Before a
+successful rebuild replaces a current file, Paperflow moves it to `build/archived/` with its
+original UTC build time, for example `paper_20260811T215623Z.docx`. Manuscript and Open Items are
+staged and validated before `paperflow build` publishes either current file. If Word locks an
+existing document, Paperflow asks the user to close it and explicitly confirms that the existing
+document will be archived, not deleted, after the successful retry.
+
+Generated DOCX files contain `PaperflowBuildUTC`, `PaperflowSourceCommit`,
+`PaperflowSourceDirty`, `PaperflowVersion`, and `PaperflowQuartoVersion` as custom Word
+properties. `paperflow clean --yes` preserves archived versions; deleting them additionally
+requires `paperflow clean --yes --include-archive`.
 
 ## User configuration
 
@@ -79,6 +92,12 @@ Version-controlled project settings live in `paperflow.yml`. Machine-specific ov
 the ignored `.paperflow.local.yml`; copy `paperflow.local.example.yml` as a starting point.
 
 ```yaml
+build:
+  manuscript_filename: paper_current.docx
+  archive_previous: true
+  archive_dir: build/archived
+  embed_provenance: true
+
 executables:
   quarto: "path/to/quarto"
 

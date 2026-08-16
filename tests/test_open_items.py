@@ -41,7 +41,7 @@ def test_open_items_build_writes_markdown_and_docx(
     write_sources(tmp_path)
     config = load_config(tmp_path)
 
-    def fake_render(
+    def fake_stage(
         source: Path,
         output: Path,
         *,
@@ -52,11 +52,18 @@ def test_open_items_build_writes_markdown_and_docx(
         assert execute is False
         assert "Add the verified assay duration" in source.read_text(encoding="utf-8")
         assert "paperflow-project" in source.read_text(encoding="utf-8")
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(b"docx")
-        return output
+        staged = tmp_path / "staged.docx"
+        staged.write_bytes(b"docx")
+        return staged
 
-    monkeypatch.setattr(open_items, "render_qmd_to_docx", fake_render)
+    def fake_publish(staged_outputs: dict[Path, Path], **kwargs: object) -> None:
+        del kwargs
+        for output, staged in staged_outputs.items():
+            output.parent.mkdir(parents=True, exist_ok=True)
+            staged.replace(output)
+
+    monkeypatch.setattr(open_items, "stage_qmd_to_docx", fake_stage)
+    monkeypatch.setattr(open_items, "publish_docx_outputs", fake_publish)
 
     result = open_items.build_open_items(config)
 

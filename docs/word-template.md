@@ -29,7 +29,7 @@ One practical starting point is a manuscript generated without a custom referenc
 
 1. leave `word.reference_docx` as `null`;
 2. run `uv run paperflow build`;
-3. copy `build/paper.docx` to `templates/reference.local.docx`;
+3. copy `build/paper_current.docx` to `templates/reference.local.docx`;
 4. open the copy in Word;
 5. remove manuscript body text while preserving intentional styles, section settings, headers, and
    footers;
@@ -56,7 +56,7 @@ Then build both Word outputs:
 uv run paperflow build
 ```
 
-The same reference formats `build/paper.docx` and `build/open_items.docx`. With
+The same reference formats `build/paper_current.docx` and `build/open_items_current.docx`. With
 `word.reject_absolute_paths: true`, a generated DOCX containing a detected local path is rejected
 without replacing an existing valid output.
 

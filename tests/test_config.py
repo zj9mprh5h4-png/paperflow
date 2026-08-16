@@ -37,6 +37,9 @@ word:
 
     assert config.project.name == "configured-project"
     assert config.paths.output_dir == (tmp_path / "output").resolve()
+    assert config.build.archive_previous is True
+    assert config.build.archive_dir == (tmp_path / "build" / "archived").resolve()
+    assert config.build.embed_provenance is True
     assert config.word.protect_inline_math is False
     assert config.word.reference_docx == (tmp_path / "templates" / "local.docx").resolve()
     assert config.executables.quarto == "tools/quarto.exe"
@@ -79,6 +82,34 @@ def test_word_review_auto_apply_cannot_be_enabled(tmp_path: Path) -> None:
 
     assert error.value.code == "config.review_auto_apply"
     assert "review.auto_apply_word_changes: false" in error.value.remediation[0]
+
+
+def test_archive_directory_must_be_dedicated(tmp_path: Path) -> None:
+    (tmp_path / "paperflow.yml").write_text(
+        "schema_version: 1\nbuild:\n  archive_dir: build\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(PaperflowError, match="dedicated directory") as error:
+        load_config(tmp_path)
+
+    assert error.value.code == "config.archive_dir"
+
+
+def test_current_docx_outputs_must_be_unique(tmp_path: Path) -> None:
+    (tmp_path / "paperflow.yml").write_text(
+        "schema_version: 1\n"
+        "build:\n"
+        "  manuscript_filename: paper_current.docx\n"
+        "open_items:\n"
+        "  output_docx: build/paper_current.docx\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(PaperflowError, match="must use different paths") as error:
+        load_config(tmp_path)
+
+    assert error.value.code == "config.duplicate_docx_output"
 
 
 def test_local_executable_override_is_resolved(tmp_path: Path) -> None:

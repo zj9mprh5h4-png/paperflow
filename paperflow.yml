@@ -12,8 +12,11 @@ paths:
   review_dir: reviews
 
 build:
-  manuscript_filename: paper.docx
+  manuscript_filename: paper_current.docx
   run_pre_render_hook: true
+  archive_previous: true
+  archive_dir: build/archived
+  embed_provenance: true
 
 word:
   reference_docx: null
@@ -31,7 +34,7 @@ open_items:
     - manuscript/**/archived/**
     - manuscript/manuscript_formatting_rules.md
   output_markdown: build/open_items.md
-  output_docx: build/open_items.docx
+  output_docx: build/open_items_current.docx
 
 review:
   require_clean_git: true

@@ -119,9 +119,12 @@ uv run paperflow build
 
 A successful build creates:
 
-- `build/paper.docx`;
+- `build/paper_current.docx`;
 - `build/open_items.md`;
-- `build/open_items.docx`.
+- `build/open_items_current.docx`.
+
+Later successful builds archive superseded DOCX files under `build/archived/` using their original
+UTC build timestamps. Keep current files closed in Microsoft Word while rebuilding.
 
 If `paperflow doctor` cannot find Quarto, restart the terminal after installing Quarto or configure
 its executable explicitly in `.paperflow.local.yml`.
