@@ -4,8 +4,8 @@ Paperflow is a local-first workflow for writing in Markdown or Quarto, generatin
 documents, and importing tracked Word reviews without turning DOCX files into a second source of
 truth.
 
-This repository is a private pre-release version. A public license has not been selected yet, so it
-is not ready for public distribution.
+This repository is a private pre-release version. Paperflow-authored material is available under
+the MIT License; public distribution remains pending until the remaining release checks are done.
 
 ## Start a manuscript repository
 
@@ -141,4 +141,10 @@ once that channel is enabled.
 
 ## License
 
-No license has been selected. Keep the repository private until that decision has been made.
+Paperflow-authored software, automation, documentation, tests, and neutral examples are licensed
+under the [MIT License](LICENSE), Copyright (c) 2026 Sam Bleker. See
+[`LICENSE-SCOPE.md`](LICENSE-SCOPE.md) for the template boundary.
+
+Original manuscripts, bibliographies, research data, figures, Word reviews, and private templates
+added by users are not automatically licensed under MIT. Their respective rights holders decide
+whether and how those materials are licensed.

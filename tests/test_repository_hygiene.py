@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -71,3 +72,14 @@ def test_issue_forms_have_required_fields_and_unique_ids() -> None:
         assert {"name", "description", "body"} <= parsed.keys()
         ids = [item["id"] for item in parsed["body"] if "id" in item]
         assert len(ids) == len(set(ids)), f"Duplicate field ID in {document.relative_to(ROOT)}"
+
+
+def test_license_metadata_and_scope_are_consistent() -> None:
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert pyproject["project"]["license"] == "MIT"
+    assert pyproject["project"]["license-files"] == ["LICENSE", "LICENSE-SCOPE.md"]
+
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert license_text.startswith("MIT License\n")
+    assert "Copyright (c) 2026 Sam Bleker" in license_text
+    assert (ROOT / "LICENSE-SCOPE.md").is_file()

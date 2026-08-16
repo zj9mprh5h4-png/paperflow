@@ -31,7 +31,7 @@ item again against the exact commit intended for publication.
 
 ## Project governance
 
-- [ ] A license has been selected and added.
+- [x] A license has been selected and added, with template-content scope documented.
 - [ ] Contribution and security guidance reflect the intended collaboration model.
 - [x] The GitHub template setting and repository-creation instructions match the tested workflow.
 - [ ] README claims match the implemented commands and tested behavior.

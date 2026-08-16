@@ -56,14 +56,21 @@ workflow and then cloned locally. The generated repository:
 
 The temporary GitHub repository and local test checkout were deleted after verification.
 
+## License decision
+
+Paperflow-authored software, automation, documentation, tests, and neutral examples use the MIT
+License, Copyright (c) 2026 Sam Bleker. `LICENSE-SCOPE.md` preserves that license for inherited
+Paperflow materials while expressly distinguishing independently authored manuscripts,
+bibliographies, data, figures, reviews, templates, and generated documents.
+
 ## Remaining publication blockers
 
 Do not publish the repository until these decisions and checks are complete:
 
-1. select and add a license;
-2. enable GitHub private vulnerability reporting or document another private security channel;
-3. change visibility deliberately and enable `main` protection when the repository becomes public;
-4. run the final checklist against the exact commit intended for publication.
+1. enable GitHub private vulnerability reporting or document another private security channel;
+2. change visibility deliberately and enable `main` protection when the repository becomes public;
+3. run the final checklist against the exact commit intended for publication.
 
 A private remote was created, `main` was pushed, and the repository was marked as a GitHub template.
-Public visibility was not enabled and no license was selected as part of this audit.
+Public visibility was not enabled. The MIT license and its template-content scope were added after
+confirming personal ownership with the copyright holder.

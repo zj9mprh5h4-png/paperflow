@@ -20,6 +20,11 @@ cd MANUSCRIPT-REPOSITORY
 Paperflow updates are not applied to an existing manuscript repository automatically. Adopt later
 workflow changes only after reviewing them against the manuscript's configuration and local files.
 
+Keep `LICENSE` and `LICENSE-SCOPE.md` for the inherited Paperflow workflow. The MIT License does not
+automatically apply to original manuscript text, bibliographies, research data, figures, reviews,
+or templates that you add. Document the rights status of that project content separately before
+sharing the repository.
+
 Open a terminal in the new repository and confirm that Git points to the intended project:
 
 ```bash

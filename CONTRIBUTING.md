@@ -5,8 +5,9 @@ welcome. Discuss a change in an issue and wait for maintainer agreement before o
 request. Uncoordinated pull requests may be closed so that manuscript safety and workflow scope
 remain reviewable.
 
-No external code contribution will be merged until the repository has a license. The process below
-takes effect once that release prerequisite is complete.
+By submitting a contribution, you confirm that you have the right to provide it and agree that the
+Paperflow-authored contribution may be distributed under the repository's MIT License. Do not
+submit third-party material unless its provenance and compatible license are documented.
 
 ## Before opening an issue
 
