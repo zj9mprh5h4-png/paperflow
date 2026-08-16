@@ -7,6 +7,16 @@ truth.
 This repository is a private pre-release version. A public license has not been selected yet, so it
 is not ready for public distribution.
 
+## Start a manuscript repository
+
+After Paperflow is published, open its GitHub page and choose **Use this template** and then
+**Create a new repository**. Give the new repository the manuscript's own name and keep it private
+whenever it will contain unpublished or confidential material. Clone that new repository—not the
+Paperflow development repository—and follow the [First manuscript guide](docs/first-manuscript.md).
+
+Using the template creates an independent project without Paperflow's development history. It is
+not a fork, and later Paperflow changes are not applied to manuscript repositories automatically.
+
 ## What works today
 
 - Render `manuscript/index.qmd` to `build/paper.docx` with Quarto and Pandoc.

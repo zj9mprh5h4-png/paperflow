@@ -5,9 +5,20 @@ separate OPEN-items DOCX. The QMD and Markdown files remain the authoritative so
 
 ## 1. Create a project copy
 
-When Paperflow is published as a GitHub template, use **Use this template** to create a new
-repository. During local development, create an intentional project copy without copying `.venv`,
-`build`, `.work`, `.quarto`, review files, or private Word templates.
+On Paperflow's GitHub page, choose **Use this template** and then **Create a new repository**. Select
+the owner, give the repository the manuscript's own name, and use private visibility for
+unpublished or confidential work. Do not create a fork: a template produces an independent project
+without Paperflow's development history.
+
+Clone the newly created manuscript repository and enter it:
+
+```bash
+git clone https://github.com/OWNER/MANUSCRIPT-REPOSITORY.git
+cd MANUSCRIPT-REPOSITORY
+```
+
+Paperflow updates are not applied to an existing manuscript repository automatically. Adopt later
+workflow changes only after reviewing them against the manuscript's configuration and local files.
 
 Open a terminal in the new repository and confirm that Git points to the intended project:
 

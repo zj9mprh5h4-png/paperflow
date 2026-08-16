@@ -49,8 +49,8 @@ Do not publish the repository until these decisions and checks are complete:
 
 1. select and add a license;
 2. enable GitHub private vulnerability reporting or document another private security channel;
-3. review GitHub repository visibility and template-repository settings;
+3. change visibility deliberately and enable `main` protection when the repository becomes public;
 4. run the final checklist against the exact commit intended for publication.
 
-A private remote was created and `main` was pushed. Public visibility was not enabled and no license
-was selected as part of this audit.
+A private remote was created, `main` was pushed, and the repository was marked as a GitHub template.
+Public visibility was not enabled and no license was selected as part of this audit.
