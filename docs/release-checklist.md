@@ -1,6 +1,8 @@
 # Public release checklist
 
 The repository is not ready for public distribution until every applicable item is complete.
+The latest documented local findings are in the [local release audit](release-audit.md). Check each
+item again against the exact commit intended for publication.
 
 ## Content and privacy
 

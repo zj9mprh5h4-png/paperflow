@@ -84,6 +84,9 @@ start a new project, follow the [First manuscript guide](docs/first-manuscript.m
 [Word-template guide](docs/word-template.md) explains how to keep publisher or institutional DOCX
 templates local and validate them before use.
 
+The [command reference](docs/commands.md) lists every CLI command, safety flag, output, and exit
+status.
+
 ## Open placeholders
 
 Use the following syntax anywhere in the configured manuscript sources:
@@ -115,7 +118,9 @@ Importing a review never changes `manuscript/index.qmd` automatically. See
 
 ## Repository safety
 
-Before any future public release, run the checklist in [`docs/release-checklist.md`](docs/release-checklist.md).
+Before any future public release, review the current
+[`docs/release-audit.md`](docs/release-audit.md) and run the checklist in
+[`docs/release-checklist.md`](docs/release-checklist.md).
 Word templates are deliberately local and ignored until their metadata, embedded paths, provenance,
 and redistribution rights have been checked. Configure a local template through
 `.paperflow.local.yml` while that review is pending.
