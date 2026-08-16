@@ -83,3 +83,22 @@ def test_license_metadata_and_scope_are_consistent() -> None:
     assert license_text.startswith("MIT License\n")
     assert "Copyright (c) 2026 Sam Bleker" in license_text
     assert (ROOT / "LICENSE-SCOPE.md").is_file()
+
+
+def test_agent_guidance_uses_runtime_configuration_diagnostics() -> None:
+    agents_path = ROOT / "AGENTS.md"
+    guide_path = ROOT / "docs" / "agent-guide.md"
+    if not agents_path.exists() and not guide_path.exists():
+        return
+
+    assert agents_path.is_file()
+    assert guide_path.is_file()
+    agents = agents_path.read_text(encoding="utf-8")
+    guide = guide_path.read_text(encoding="utf-8")
+
+    assert "docs/agent-guide.md" in agents
+    assert "paperflow doctor --format json" in agents
+    assert "project.manuscript" in agents
+    assert "project.formatting_rules" in agents
+    for field in ["schema_version", "error_code", "remediation"]:
+        assert f"`{field}`" in guide

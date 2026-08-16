@@ -9,7 +9,18 @@ from pathlib import Path
 
 
 class PaperflowError(RuntimeError):
-    """Raised for expected workflow errors with user-facing messages."""
+    """Raised for expected workflow errors with user-facing remediation."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "paperflow.error",
+        remediation: tuple[str, ...] = (),
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.remediation = remediation
 
 
 @dataclass(frozen=True)
