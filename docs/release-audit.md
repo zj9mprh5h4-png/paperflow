@@ -4,7 +4,7 @@ Audit date: 2026-08-16
 
 Baseline: local commit `4564674` (`main`)
 
-Remote validation: private GitHub commit `2ab2a75` (`main`)
+Remote validation: private GitHub commit `1e0fc1b` (`main`)
 
 This report records the checks performed before Paperflow is connected to a public remote. It is
 evidence for the release checklist, not a declaration that the repository is ready to publish.
@@ -39,9 +39,22 @@ The following workflows have been exercised locally on Windows without administr
 - creation and import of a Word Track Changes review round;
 - verification that review import does not alter QMD or Markdown source files.
 
-The private GitHub repository ran the complete validation workflow successfully for commit
-`2ab2a75`. Both `ubuntu-latest` and `windows-latest` passed environment setup, Doctor, CLI checks,
+The private GitHub repository ran the complete validation workflow successfully through commit
+`1e0fc1b`. Both `ubuntu-latest` and `windows-latest` passed environment setup, Doctor, CLI checks,
 lint, 29 tests, and the neutral-example Word build.
+
+## Template smoke test
+
+On 2026-08-16, a temporary private repository was generated with GitHub's **Use this template**
+workflow and then cloned locally. The generated repository:
+
+- identified Paperflow as its template source but contained only one new initial commit;
+- completed `uv sync --frozen --extra dev` without a local configuration or Word template;
+- passed Doctor, Ruff, all 29 tests, and the neutral manuscript plus Open Items Word build;
+- passed the complete GitHub Actions matrix on both its initial commit and an explicit test commit;
+- kept `.venv`, `.uv-cache`, `.work`, and generated build outputs outside Git tracking.
+
+The temporary GitHub repository and local test checkout were deleted after verification.
 
 ## Remaining publication blockers
 

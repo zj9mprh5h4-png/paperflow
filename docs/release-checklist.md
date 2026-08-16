@@ -20,18 +20,18 @@ item again against the exact commit intended for publication.
 
 ## Reproducibility
 
-- [ ] A fresh clone can run `uv sync --frozen --extra dev`.
-- [ ] A fresh clone can run `uv run pytest` without private data.
-- [ ] A fresh clone can run `uv run paperflow doctor`.
-- [ ] A fresh clone can run `uv run paperflow build` when Quarto is installed.
-- [ ] The build creates both the manuscript and Open Items DOCX files.
-- [ ] A repository created with **Use this template** passes setup, Doctor, tests, and the neutral
+- [x] A fresh clone can run `uv sync --frozen --extra dev`.
+- [x] A fresh clone can run `uv run pytest` without private data.
+- [x] A fresh clone can run `uv run paperflow doctor`.
+- [x] A fresh clone can run `uv run paperflow build` when Quarto is installed.
+- [x] The build creates both the manuscript and Open Items DOCX files.
+- [x] A repository created with **Use this template** passes setup, Doctor, tests, and the neutral
   build without Paperflow's development history.
-- [ ] CI performs the same checks.
+- [x] CI performs the same checks.
 
 ## Project governance
 
 - [ ] A license has been selected and added.
 - [ ] Contribution and security guidance reflect the intended collaboration model.
-- [ ] The GitHub template setting and repository-creation instructions match the tested workflow.
+- [x] The GitHub template setting and repository-creation instructions match the tested workflow.
 - [ ] README claims match the implemented commands and tested behavior.
