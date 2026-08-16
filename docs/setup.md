@@ -26,6 +26,31 @@ uv --version
 quarto --version
 ```
 
+### Verified Windows setup without administrator rights
+
+This setup was verified from a non-elevated Windows account. Paperflow does not perform any of
+these installation steps automatically.
+
+1. Install `uv` with the user-level method from the
+   [official installation guide](https://docs.astral.sh/uv/getting-started/installation/). The
+   verified installation placed `uv.exe` in `%USERPROFILE%\.local\bin`.
+2. Download the Windows ZIP and its checksum file from the
+   [official Quarto release page](https://github.com/quarto-dev/quarto-cli/releases). Verify the
+   archive checksum before extracting it.
+3. Extract Quarto into a user-writable directory. The verified installation used
+   `%LOCALAPPDATA%\Programs\Quarto\<version>`.
+4. Either add Quarto's `bin` directory to the user `PATH` or enter the existing executable in the
+   ignored `.paperflow.local.yml`:
+
+```yaml
+executables:
+  quarto: "C:/Users/<username>/AppData/Local/Programs/Quarto/<version>/bin/quarto.exe"
+```
+
+Close and reopen the terminal after changing the user `PATH`. Then run `uv --version`,
+`quarto --version`, and later `uv run paperflow doctor`. No administrator-wide installation is
+required.
+
 ## 2. Create the locked project environment
 
 From the repository root, run:

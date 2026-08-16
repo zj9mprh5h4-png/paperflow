@@ -31,6 +31,10 @@ neutral example intentionally contains no journal template or research data.
   compatible Python version when necessary.
 - Microsoft Word is optional and is needed only for real Word review rounds.
 
+A no-administrator Windows setup has been verified for both `uv` and portable Quarto. Paperflow
+still leaves both installations under the user's explicit control; see
+[`docs/setup.md`](docs/setup.md#verified-windows-setup-without-administrator-rights).
+
 Python packages are declared in `pyproject.toml` and reproducibly locked in `uv.lock`. Paperflow
 deliberately has no hand-maintained `requirements.in` or `requirements.txt`, because that would
 create a second dependency source that can drift out of sync. See the complete, platform-neutral
