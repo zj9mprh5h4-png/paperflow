@@ -37,6 +37,8 @@ def render_qmd_to_docx(
         "docx",
         "--output",
         temporary_name,
+        "--metadata",
+        f"lang:{config.project.language}",
     ]
     if config.word.reference_docx is not None:
         args.extend(["--reference-doc", str(config.word.reference_docx)])
@@ -52,15 +54,16 @@ def render_qmd_to_docx(
             raise PaperflowError(
                 f"Expected one rendered DOCX named {temporary_name}, found {len(candidates)}."
             )
-        candidates[0].replace(output)
+        rendered = candidates[0]
+        if config.word.protect_inline_math:
+            protect_docx_inline_math(rendered)
+        if not docx_core_files_present(rendered):
+            raise PaperflowError(f"Generated file is not a valid DOCX: {output}")
+        if config.word.reject_absolute_paths and docx_contains_absolute_paths(rendered):
+            raise PaperflowError(f"Generated DOCX contains an absolute local path: {output}")
+        rendered.replace(output)
     finally:
         for temporary in config.root.rglob(temporary_name):
             temporary.unlink(missing_ok=True)
 
-    if config.word.protect_inline_math:
-        protect_docx_inline_math(output)
-    if not docx_core_files_present(output):
-        raise PaperflowError(f"Generated file is not a valid DOCX: {output}")
-    if config.word.reject_absolute_paths and docx_contains_absolute_paths(output):
-        raise PaperflowError(f"Generated DOCX contains an absolute local path: {output}")
     return output

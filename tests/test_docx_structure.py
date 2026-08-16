@@ -9,6 +9,7 @@ from paperflow.validation import (
     docx_contains_absolute_paths,
     docx_contains_omml,
     docx_core_files_present,
+    docx_reference_status,
 )
 
 
@@ -36,6 +37,14 @@ def test_docx_absolute_path_scan(tmp_path: Path) -> None:
     make_minimal_docx(docx, b'<w:document xmlns:w="w">C:\\Users\\example\\secret.png</w:document>')
 
     assert docx_contains_absolute_paths(docx)
+    assert docx_reference_status(docx) == (True, False)
+
+
+def test_docx_reference_status_rejects_non_docx(tmp_path: Path) -> None:
+    path = tmp_path / "not-a-docx.docx"
+    path.write_text("not a zip archive", encoding="utf-8")
+
+    assert docx_reference_status(path) == (False, False)
 
 
 def test_inline_math_is_wrapped_in_nobreak_box_without_changing_display_math(

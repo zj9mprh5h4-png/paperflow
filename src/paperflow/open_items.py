@@ -83,7 +83,10 @@ def open_items_markdown(items: list[OpenItem], config: PaperflowConfig) -> str:
     output = [
         "# Open Items",
         "",
-        "This report is generated from the current manuscript placeholders.",
+        (
+            "This report is generated from the current manuscript placeholders for "
+            f"{config.project.name}."
+        ),
         "",
         f"- Total: {len(items)}",
         "",

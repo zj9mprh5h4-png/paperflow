@@ -46,6 +46,16 @@ def docx_contains_absolute_paths(path: Path) -> bool:
     return False
 
 
+def docx_reference_status(path: Path) -> tuple[bool, bool]:
+    """Return whether a reference file is a DOCX and free of absolute local paths."""
+    try:
+        valid = docx_core_files_present(path)
+        path_safe = valid and not docx_contains_absolute_paths(path)
+    except (OSError, zipfile.BadZipFile):
+        return False, False
+    return valid, path_safe
+
+
 def doctor(*, allow_missing_tools: bool = False) -> int:
     root = find_project_root()
     checks: list[tuple[str, bool, str]] = []
@@ -81,13 +91,35 @@ def doctor(*, allow_missing_tools: bool = False) -> int:
             )
         )
         if config.word.reference_docx is not None:
+            reference_exists = config.word.reference_docx.is_file()
             checks.append(
                 (
                     "Word reference document",
-                    config.word.reference_docx.is_file(),
+                    reference_exists,
                     str(config.word.reference_docx),
                 )
             )
+            if reference_exists:
+                valid_reference, safe_reference = docx_reference_status(
+                    config.word.reference_docx
+                )
+                checks.append(
+                    (
+                        "Word reference DOCX structure",
+                        valid_reference,
+                        "valid" if valid_reference else "invalid or unreadable DOCX",
+                    )
+                )
+                if valid_reference:
+                    checks.append(
+                        (
+                            "Word reference local paths",
+                            safe_reference,
+                            "none found"
+                            if safe_reference
+                            else "absolute local path found; use a sanitized template",
+                        )
+                    )
     checks.append(("python executable", True, sys.executable))
     checks.append(("python version", True, sys.version.split()[0]))
     checks.append(("python inside .venv", python_is_venv(root), "expected under .venv"))

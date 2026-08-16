@@ -51,6 +51,7 @@ def test_open_items_build_writes_markdown_and_docx(
         del config
         assert execute is False
         assert "Add the verified assay duration" in source.read_text(encoding="utf-8")
+        assert "paperflow-project" in source.read_text(encoding="utf-8")
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_bytes(b"docx")
         return output
