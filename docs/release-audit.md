@@ -2,21 +2,21 @@
 
 Audit date: 2026-08-16
 
-Baseline: local commit `4564674` (`main`)
+Final pre-publication baseline: commit `e9e6656` (`main`)
 
-Remote validation: private GitHub commit `1e0fc1b` (`main`)
+Remote validation: GitHub Actions run `31940502181` for commit `e9e6656` (`main`)
 
-This report records the checks performed before Paperflow is connected to a public remote. It is
-evidence for the release checklist, not a declaration that the repository is ready to publish.
+This report records the checks performed for Paperflow's initial public release and the repository
+controls enabled immediately afterward.
 
 ## Result
 
-The local repository boundary is clean at the audited baseline:
+The repository boundary is clean at the audited baseline:
 
-- all 53 tracked files are small text, SVG, or lock files;
+- all 63 tracked files are small text, SVG, license, placeholder, or lock files;
 - no DOCX, returned review file, review manifest, virtual environment, build output, local
   configuration, archive, Parquet file, or other large binary is tracked;
-- the largest object across the eight-commit history is `uv.lock` at 39,216 bytes;
+- the largest object across the 18-commit history is `uv.lock` at 39,216 bytes;
 - the current tree and all commits were searched for common credential patterns, private names,
   email fragments, and the source project's name without a finding;
 - the remaining absolute-path examples use the intentional placeholder
@@ -39,9 +39,9 @@ The following workflows have been exercised locally on Windows without administr
 - creation and import of a Word Track Changes review round;
 - verification that review import does not alter QMD or Markdown source files.
 
-The private GitHub repository ran the complete validation workflow successfully through commit
-`1e0fc1b`. Both `ubuntu-latest` and `windows-latest` passed environment setup, Doctor, CLI checks,
-lint, 29 tests, and the neutral-example Word build.
+GitHub ran the complete validation workflow successfully for the final pre-publication commit
+`e9e6656`. Both `ubuntu-latest` and `windows-latest` passed environment setup, Doctor, CLI checks,
+lint, 32 tests, and the neutral-example Word build.
 
 ## Template smoke test
 
@@ -63,14 +63,18 @@ License, Copyright (c) 2026 Sam Bleker. `LICENSE-SCOPE.md` preserves that licens
 Paperflow materials while expressly distinguishing independently authored manuscripts,
 bibliographies, data, figures, reviews, templates, and generated documents.
 
-## Remaining publication blockers
+## GitHub publication controls
 
-Do not publish the repository until these decisions and checks are complete:
+On 2026-08-16, the repository was deliberately made public after the final history and content
+audit. GitHub identifies the repository as an MIT-licensed template, and private vulnerability
+reporting is enabled.
 
-1. enable GitHub private vulnerability reporting or document another private security channel;
-2. change visibility deliberately and enable `main` protection when the repository becomes public;
-3. run the final checklist against the exact commit intended for publication.
+The `main` branch protection applies to administrators and requires:
 
-A private remote was created, `main` was pushed, and the repository was marked as a GitHub template.
-Public visibility was not enabled. The MIT license and its template-content scope were added after
-confirming personal ownership with the copyright holder.
+- a pull request, with zero mandatory approvals while Paperflow has one maintainer;
+- successful, up-to-date `ubuntu-latest` and `windows-latest` checks;
+- linear history and resolution of all review conversations;
+- no force pushes and no branch deletion.
+
+The initial public-release checklist is complete. Paperflow remains an early development release;
+repeat the checklist before publishing a tagged version.

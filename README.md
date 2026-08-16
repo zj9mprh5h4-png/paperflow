@@ -4,15 +4,15 @@ Paperflow is a local-first workflow for writing in Markdown or Quarto, generatin
 documents, and importing tracked Word reviews without turning DOCX files into a second source of
 truth.
 
-This repository is a private pre-release version. Paperflow-authored material is available under
-the MIT License; public distribution remains pending until the remaining release checks are done.
+Paperflow is publicly available as an early development release under the MIT License. Interfaces
+and workflows may still change before the first stable release.
 
 ## Start a manuscript repository
 
-After Paperflow is published, open its GitHub page and choose **Use this template** and then
-**Create a new repository**. Give the new repository the manuscript's own name and keep it private
-whenever it will contain unpublished or confidential material. Clone that new repository—not the
-Paperflow development repository—and follow the [First manuscript guide](docs/first-manuscript.md).
+Open the Paperflow GitHub page and choose **Use this template** and then **Create a new
+repository**. Give the new repository the manuscript's own name and keep it private whenever it
+will contain unpublished or confidential material. Clone that new repository—not the Paperflow
+development repository—and follow the [First manuscript guide](docs/first-manuscript.md).
 
 Using the template creates an independent project without Paperflow's development history. It is
 not a fork, and later Paperflow changes are not applied to manuscript repositories automatically.
@@ -128,16 +128,16 @@ Importing a review never changes `manuscript/index.qmd` automatically. See
 
 ## Repository safety
 
-Before any future public release, review the current
-[`docs/release-audit.md`](docs/release-audit.md) and run the checklist in
-[`docs/release-checklist.md`](docs/release-checklist.md).
+The initial public-release evidence is recorded in
+[`docs/release-audit.md`](docs/release-audit.md). Repeat the checks in
+[`docs/release-checklist.md`](docs/release-checklist.md) before a future tagged release.
 Word templates are deliberately local and ignored until their metadata, embedded paths, provenance,
 and redistribution rights have been checked. Configure a local template through
 `.paperflow.local.yml` while that review is pending.
 
-Future public collaboration follows the controlled process in [`CONTRIBUTING.md`](CONTRIBUTING.md).
-Report security concerns only through the private channel described in [`SECURITY.md`](SECURITY.md)
-once that channel is enabled.
+Public collaboration follows the controlled process in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Report security concerns only through GitHub's private vulnerability-reporting channel described in
+[`SECURITY.md`](SECURITY.md).
 
 ## License
 
