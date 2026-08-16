@@ -171,6 +171,12 @@ If Doctor reports a missing template, check the merged value with:
 uv run paperflow config-show
 ```
 
+A build that stops with `Generated DOCX contains an absolute local path in …` almost always points
+back at the reference document, because Quarto copies its headers, footers, and styles into every
+output. The message names the part of the generated file; the same part usually carries the path in
+the template. Repair the template and rebuild rather than looking for the path in the manuscript
+sources.
+
 If the DOCX is invalid or unreadable, open and resave a clean copy in Word or start from a newly
 generated neutral reference. If the build succeeds but formatting is incomplete, compare the Word
 style names expected by Pandoc with the styles present in the reference document. Keep formatting
