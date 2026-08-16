@@ -58,6 +58,39 @@ Doctor checks that the configured reference:
 - has the required DOCX package structure;
 - contains no common absolute local paths.
 
+When it finds a path, it names the DOCX part and the kind of link that carries it:
+
+```text
+[FAIL] Word reference local paths: absolute local path in word/_rels/settings.xml.rels
+       (attached document template); docProps/app.xml (hyperlink base)
+```
+
+The path itself is never printed. It normally contains the account name of whoever produced the
+template, and Doctor output should stay safe to paste into an issue. The part and the kind are
+enough to find the setting in Word.
+
+## Remove absolute local paths
+
+Publisher and institutional templates regularly carry a path to the machine they were built on.
+Repair a copy of the template; do not disable `word.reject_absolute_paths` to make the build pass.
+Rerun `uv run paperflow doctor` after each change, because one template can carry several.
+
+| Reported kind | Where it comes from | How to clear it in Word |
+| --- | --- | --- |
+| attached document template | The DOTX or DOTM the file was created from | Developer tab, **Document Template**, set the template back to `Normal.dotm`. Without the Developer tab: File, Options, Add-ins, set **Manage** to *Templates*, then **Go**. |
+| hyperlink base | A base folder prepended to every relative hyperlink | File, Info, Properties, **Advanced Properties**, *Summary* tab, clear **Hyperlink base**. |
+| external relationship | Linked images or objects that were inserted as a link instead of embedded | File, Info, **Edit Links to Files**, then break each link. Reinsert the image with **Insert** instead of **Insert and Link** if it must stay. |
+| subdocument link | A master document that still references subdocuments | Switch to Outline view, **Show Document**, then **Unlink** each subdocument. |
+| embedded path | A path inside field codes or an embedded object | Press `Alt+F9` to show field codes, then find and remove the path. |
+
+Word menu labels depend on the interface language; the paths above use the English interface.
+
+Then run the Document Inspector to remove leftover personal information: File, Info, **Check for
+Issues**, **Inspect Document**. The inspector removes document properties and personal data, but it
+does not remove every kind of link, so treat Doctor and not the inspector as the deciding check.
+Save the repaired file under `templates/` as a new local copy and keep the untouched original
+outside version control.
+
 Then build both Word outputs:
 
 ```bash
@@ -83,8 +116,9 @@ publishing a template, verify:
 - page size, margins, columns, numbering, and language defaults;
 - absence of manuscript, reviewer, patient, participant, or institutional confidential content.
 
-Keep `word.reject_absolute_paths` enabled. If Doctor reports an absolute local path, sanitize a copy
-of the template instead of disabling the check merely to make the build pass.
+Keep `word.reject_absolute_paths` enabled. If Doctor reports an absolute local path, follow
+[Remove absolute local paths](#remove-absolute-local-paths) instead of disabling the check merely
+to make the build pass.
 
 ## Troubleshooting
 
