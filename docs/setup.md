@@ -1,7 +1,8 @@
 # Setup
 
-Paperflow combines operating-system tools with a locked Python environment. Install the system
-tools first; `uv` then creates and manages the project-specific `.venv` automatically.
+Paperflow combines external tools with a locked Python environment. Users must install the
+prerequisites themselves; Paperflow does not download, install, or update Git, `uv`, Quarto, or
+Microsoft Word automatically. Afterward, `uv` creates and manages the project-specific `.venv`.
 
 ## 1. Install the system tools
 
@@ -14,6 +15,8 @@ tools first; `uv` then creates and manages the project-specific `.venv` automati
 | Microsoft Word | No | Needed only to edit or review the generated DOCX files |
 
 Quarto includes a compatible Pandoc version. A separate Pandoc installation is not required.
+Install `uv` and Quarto before running the Paperflow setup. A user-level installation is sufficient
+when its executable is available on `PATH`; administrator-wide installation is not required.
 
 After installation, open a new terminal and verify the tools:
 
@@ -52,8 +55,9 @@ specific integration that requires it.
 
 ## 3. Configure machine-specific paths
 
-If Git, `uv`, and Quarto are on `PATH`, no local executable settings are needed. Otherwise, copy
-`paperflow.local.example.yml` to `.paperflow.local.yml` and enter the executable paths there.
+If Git, `uv`, and Quarto are on `PATH`, no local executable settings are needed. Otherwise, install
+them manually and then copy `paperflow.local.example.yml` to `.paperflow.local.yml` to enter the
+executable paths. The configuration points to an existing installation; it never installs a tool.
 
 PowerShell:
 

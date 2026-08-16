@@ -150,9 +150,21 @@ def git(args: list[str], *, cwd: Path | None = None, check: bool = True) -> Comm
 def require_tool(name: str, *, root: Path | None = None) -> str:
     path = executable(name, root=root)
     if path is None:
+        guidance = {
+            "git": "Install Git manually: https://git-scm.com/downloads",
+            "uv": (
+                "Install uv manually: "
+                "https://docs.astral.sh/uv/getting-started/installation/"
+            ),
+            "quarto": (
+                "Install Quarto manually: https://quarto.org/docs/download/ "
+                "Then put it on PATH or configure executables.quarto in "
+                ".paperflow.local.yml."
+            ),
+        }.get(name, f"Install '{name}' manually and put it on PATH.")
         raise PaperflowError(
-            f"Required tool '{name}' was not found on PATH. Install it as a system tool "
-            "and rerun the command."
+            f"Required external tool '{name}' was not found. Paperflow does not install "
+            f"prerequisites automatically. {guidance}"
         )
     return path
 

@@ -24,7 +24,8 @@ neutral example intentionally contains no journal template or research data.
 
 ## Requirements
 
-- Git, `uv`, and the Quarto CLI must be installed as operating-system tools.
+- Git, `uv`, and the Quarto CLI are external prerequisites that users must install themselves.
+- Paperflow does not download, install, or update these tools automatically.
 - Quarto already includes Pandoc; do not install a separate Pandoc copy for Paperflow.
 - Python 3.11 or newer is required. `uv` creates the project environment and can provision a
   compatible Python version when necessary.

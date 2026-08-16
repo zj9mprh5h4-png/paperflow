@@ -20,7 +20,10 @@ def main() -> int:
 
     missing = [tool for tool in ("git", "uv") if shutil.which(tool) is None]
     if missing:
-        print("Missing required tools: " + ", ".join(missing))
+        print("Missing required external tools: " + ", ".join(missing))
+        print("Paperflow does not install prerequisites automatically.")
+        print("Install Git: https://git-scm.com/downloads")
+        print("Install uv: https://docs.astral.sh/uv/getting-started/installation/")
         return 1
 
     run(["uv", "sync", "--frozen", "--extra", "dev"])

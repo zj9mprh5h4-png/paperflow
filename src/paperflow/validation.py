@@ -92,9 +92,26 @@ def doctor(*, allow_missing_tools: bool = False) -> int:
     checks.append(("python version", True, sys.version.split()[0]))
     checks.append(("python inside .venv", python_is_venv(root), "expected under .venv"))
 
+    missing_tool_details = {
+        "git": "missing; install manually: https://git-scm.com/downloads",
+        "uv": (
+            "missing; install manually before setup: "
+            "https://docs.astral.sh/uv/getting-started/installation/"
+        ),
+        "quarto": (
+            "missing; install manually: https://quarto.org/docs/download/; then use PATH "
+            "or executables.quarto in .paperflow.local.yml"
+        ),
+    }
     for tool in ["git", "uv", "quarto"]:
         path = executable(tool, root=root)
-        checks.append((f"{tool} on PATH", path is not None, path or "missing"))
+        checks.append(
+            (
+                f"{tool} executable",
+                path is not None,
+                path or missing_tool_details[tool],
+            )
+        )
 
     git_root = git(["rev-parse", "--show-toplevel"], cwd=root, check=False)
     checks.append(("git repository", git_root.returncode == 0, git_root.stdout or git_root.stderr))
