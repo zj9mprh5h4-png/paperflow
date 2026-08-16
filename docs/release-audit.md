@@ -48,8 +48,7 @@ lint, 29 tests, and the neutral-example Word build.
 Do not publish the repository until these decisions and checks are complete:
 
 1. select and add a license;
-2. decide whether the repository accepts contributions and security reports, then align the
-   governance documents;
+2. enable GitHub private vulnerability reporting or document another private security channel;
 3. review GitHub repository visibility and template-repository settings;
 4. run the final checklist against the exact commit intended for publication.
 

@@ -4,8 +4,8 @@ Paperflow is a local-first workflow for writing in Markdown or Quarto, generatin
 documents, and importing tracked Word reviews without turning DOCX files into a second source of
 truth.
 
-This repository is an early local development version. A public license has not been selected yet,
-so it is not ready for public distribution.
+This repository is a private pre-release version. A public license has not been selected yet, so it
+is not ready for public distribution.
 
 ## What works today
 
@@ -125,6 +125,10 @@ Word templates are deliberately local and ignored until their metadata, embedded
 and redistribution rights have been checked. Configure a local template through
 `.paperflow.local.yml` while that review is pending.
 
+Future public collaboration follows the controlled process in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Report security concerns only through the private channel described in [`SECURITY.md`](SECURITY.md)
+once that channel is enabled.
+
 ## License
 
-No license has been selected. Keep the repository local until that decision has been made.
+No license has been selected. Keep the repository private until that decision has been made.
