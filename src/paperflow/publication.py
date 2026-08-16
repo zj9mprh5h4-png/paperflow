@@ -408,8 +408,8 @@ def publish_docx_outputs(
                 suffix=".tmp",
                 dir=destination.parent,
                 delete=False,
-            ) as temporary:
-                backup = Path(temporary.name)
+            ) as handle:
+                backup = Path(handle.name)
             backup.unlink()
             temporary_backups.append(backup)
         rotations.append((destination, backup))
@@ -438,8 +438,8 @@ def publish_docx_outputs(
             archive_previous=config.build.archive_previous,
         ) from exc
     finally:
-        for temporary in prepared.values():
-            temporary.unlink(missing_ok=True)
+        for prepared_copy in prepared.values():
+            prepared_copy.unlink(missing_ok=True)
         if not config.build.archive_previous:
             for backup in temporary_backups:
                 backup.unlink(missing_ok=True)

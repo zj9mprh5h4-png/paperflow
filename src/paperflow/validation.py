@@ -278,18 +278,33 @@ def doctor(*, allow_missing_tools: bool = False, output_format: str = "text") ->
         DoctorCheck("python.version", "python version", True, sys.version.split()[0])
     )
     inside_venv = python_is_venv(root)
+    expected_venv = (root / ".venv").resolve()
+    if inside_venv:
+        venv_detail = str(expected_venv)
+        venv_remediation: tuple[str, ...] = ()
+    elif sys.prefix == sys.base_prefix:
+        venv_detail = f"no virtual environment is active; expected {expected_venv}"
+        venv_remediation = (
+            "Run uv sync --frozen --extra dev from the project root.",
+            "Invoke Paperflow with uv run rather than a system Python interpreter.",
+        )
+    else:
+        venv_detail = (
+            f"a different environment is active: {Path(sys.prefix).resolve()}; "
+            f"expected {expected_venv}"
+        )
+        venv_remediation = (
+            "Prefix commands with uv run; it always selects this project's .venv, whatever "
+            "the shell has activated.",
+            "Run uv sync --frozen --extra dev from this project root if .venv is missing.",
+        )
     checks.append(
         DoctorCheck(
             "python.venv",
             "python inside .venv",
             inside_venv,
-            "expected under .venv",
-            ()
-            if inside_venv
-            else (
-                "Run uv sync --frozen --extra dev from the project root.",
-                "Invoke Paperflow with uv run rather than a system Python interpreter.",
-            ),
+            venv_detail,
+            venv_remediation,
         )
     )
 
