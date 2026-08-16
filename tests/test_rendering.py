@@ -25,6 +25,14 @@ def test_render_finds_quarto_output_in_project_output_directory(
     monkeypatch.setattr(rendering, "docx_contains_absolute_paths", lambda path: False)
     monkeypatch.setattr(rendering, "protect_docx_inline_math", lambda path: 0)
 
+    def fake_publish(staged_outputs: dict[Path, Path], **kwargs: object) -> None:
+        del kwargs
+        for destination, staged in staged_outputs.items():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            staged.replace(destination)
+
+    monkeypatch.setattr(rendering, "publish_docx_outputs", fake_publish)
+
     def fake_run_command(args: list[str], **kwargs) -> object:
         calls.append(args)
         name = args[args.index("--output") + 1]

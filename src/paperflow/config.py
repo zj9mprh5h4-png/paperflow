@@ -27,8 +27,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "review_dir": "reviews",
     },
     "build": {
-        "manuscript_filename": "paper.docx",
+        "manuscript_filename": "paper_current.docx",
         "run_pre_render_hook": True,
+        "archive_previous": True,
+        "archive_dir": "build/archived",
+        "embed_provenance": True,
     },
     "word": {
         "reference_docx": None,
@@ -45,7 +48,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "manuscript/manuscript_formatting_rules.md",
         ],
         "output_markdown": "build/open_items.md",
-        "output_docx": "build/open_items.docx",
+        "output_docx": "build/open_items_current.docx",
     },
     "review": {
         "require_clean_git": True,
@@ -78,6 +81,9 @@ class PathSettings:
 class BuildSettings:
     manuscript_filename: str
     run_pre_render_hook: bool
+    archive_previous: bool
+    archive_dir: Path
+    embed_provenance: bool
 
 
 @dataclass(frozen=True)
@@ -345,6 +351,46 @@ def load_config(root: Path | None = None) -> PaperflowConfig:
             ),
         )
 
+    output_dir = _inside_project(project_root, paths["output_dir"], "paths.output_dir")
+    archive_dir = _inside_project(project_root, build["archive_dir"], "build.archive_dir")
+    manuscript_output = output_dir / filename
+    open_items_output_docx = _inside_project(
+        project_root,
+        open_items["output_docx"],
+        "open_items.output_docx",
+    )
+    if archive_dir in {project_root, output_dir}:
+        raise PaperflowError(
+            "build.archive_dir must be a dedicated directory below the project root.",
+            code="config.archive_dir",
+            remediation=(
+                "Set build.archive_dir to a dedicated project-relative directory such as "
+                "build/archived.",
+            ),
+        )
+    if manuscript_output.is_relative_to(archive_dir) or open_items_output_docx.is_relative_to(
+        archive_dir
+    ):
+        raise PaperflowError(
+            "Current DOCX outputs must not be placed inside build.archive_dir.",
+            code="config.output_in_archive",
+            remediation=(
+                "Keep current DOCX outputs outside build.archive_dir, for example directly "
+                "under build/.",
+            ),
+        )
+    if _boolean(open_items["enabled"], "open_items.enabled") and (
+        manuscript_output == open_items_output_docx
+    ):
+        raise PaperflowError(
+            "The manuscript and Open Items DOCX outputs must use different paths.",
+            code="config.duplicate_docx_output",
+            remediation=(
+                "Set build.manuscript_filename and open_items.output_docx to different DOCX "
+                "filenames.",
+            ),
+        )
+
     return PaperflowConfig(
         root=project_root,
         project=ProjectSettings(
@@ -358,7 +404,7 @@ def load_config(root: Path | None = None) -> PaperflowConfig:
             ),
         ),
         paths=PathSettings(
-            output_dir=_inside_project(project_root, paths["output_dir"], "paths.output_dir"),
+            output_dir=output_dir,
             work_dir=_inside_project(project_root, paths["work_dir"], "paths.work_dir"),
             review_dir=_inside_project(project_root, paths["review_dir"], "paths.review_dir"),
         ),
@@ -367,6 +413,15 @@ def load_config(root: Path | None = None) -> PaperflowConfig:
             run_pre_render_hook=_boolean(
                 build["run_pre_render_hook"],
                 "build.run_pre_render_hook",
+            ),
+            archive_previous=_boolean(
+                build["archive_previous"],
+                "build.archive_previous",
+            ),
+            archive_dir=archive_dir,
+            embed_provenance=_boolean(
+                build["embed_provenance"],
+                "build.embed_provenance",
             ),
         ),
         word=WordSettings(
@@ -397,11 +452,7 @@ def load_config(root: Path | None = None) -> PaperflowConfig:
                 open_items["output_markdown"],
                 "open_items.output_markdown",
             ),
-            output_docx=_inside_project(
-                project_root,
-                open_items["output_docx"],
-                "open_items.output_docx",
-            ),
+            output_docx=open_items_output_docx,
         ),
         review=ReviewSettings(
             require_clean_git=_boolean(

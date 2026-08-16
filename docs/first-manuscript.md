@@ -60,7 +60,10 @@ project:
   formatting_rules: manuscript/manuscript_formatting_rules.md
 
 build:
-  manuscript_filename: manuscript.docx
+  manuscript_filename: manuscript_current.docx
+  archive_previous: true
+  archive_dir: build/archived
+  embed_provenance: true
 ```
 
 Keep shared settings version-controlled. See the [configuration reference](configuration.md) before
@@ -122,9 +125,14 @@ uv run paperflow build
 
 The baseline configuration creates:
 
-- `build/paper.docx` — editable manuscript output;
+- `build/paper_current.docx` — editable manuscript output at a stable path;
 - `build/open_items.md` — reviewable task checklist;
-- `build/open_items.docx` — separate Word task checklist.
+- `build/open_items_current.docx` — separate Word task checklist at a stable path.
+
+On the next successful build, Paperflow moves the previous current DOCX files to
+`build/archived/` and names them with their embedded UTC build time. If Word has a current file
+open, close it and rerun the build; the existing file will be archived, not deleted, after the
+successful retry.
 
 Inspect the Word documents for page layout, styles, figures, tables, equations, citations, headers,
 footers, and OPEN-item completeness. A successful command proves structural generation, not final
@@ -136,7 +144,7 @@ Before the first project commit:
 
 ```bash
 git status --short
-git check-ignore .paperflow.local.yml templates/reference.local.docx build/paper.docx
+git check-ignore .paperflow.local.yml templates/reference.local.docx build/paper_current.docx
 ```
 
 Only project sources, shared configuration, documentation, and intentionally public assets should

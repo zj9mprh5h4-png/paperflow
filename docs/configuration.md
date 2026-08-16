@@ -76,8 +76,24 @@ All three paths must remain inside the repository.
 
 | Field | Type | Baseline value | Effect |
 | --- | --- | --- | --- |
-| `manuscript_filename` | bare `.docx` filename | `paper.docx` | Manuscript filename created under `paths.output_dir`. Directories and non-DOCX extensions are rejected. |
+| `manuscript_filename` | bare `.docx` filename | `paper_current.docx` | Stable manuscript filename created under `paths.output_dir`. Directories and non-DOCX extensions are rejected. |
 | `run_pre_render_hook` | boolean | `true` | Runs `scripts/pre_render.py` with the active Python interpreter before manuscript rendering when that file exists. Has no effect when the hook is absent. |
+| `archive_previous` | boolean | `true` | Moves each superseded current DOCX into `archive_dir` after all new outputs have rendered and validated successfully. |
+| `archive_dir` | project-relative directory | `build/archived` | Stores previous DOCX versions under sortable UTC names such as `paper_20260811T215623Z.docx`. It must be a dedicated directory and cannot contain a current output. `paperflow clean --yes --include-archive` refuses to delete it when it holds anything other than archived DOCX files, so a mistyped value cannot remove manuscript sources. |
+| `embed_provenance` | boolean | `true` | Adds the build time, source commit and dirty state, Paperflow version, and Quarto version as custom Word properties. |
+
+Paperflow derives an archive filename from the existing document's embedded
+`PaperflowBuildUTC`, not from the later time at which it is archived. For documents created before
+this metadata existed, the DOCX core creation time and then its filesystem modification time are
+used as fallbacks. Filename collisions receive `_01`, `_02`, and so on. When adopting the stable
+`*_current.docx` defaults, a matching legacy output without `_current` is migrated into the archive
+after the new documents have rendered successfully.
+
+`paperflow build` stages and validates the manuscript and Open Items DOCX before publishing either
+one. Current output paths therefore stay stable for Word's **Recent** list. If Microsoft Word locks
+a current file, publication stops without changing any current output. The error tells the user to
+close Word and confirms that the existing document will be archived, not deleted, after a
+successful retry.
 
 ### `word`
 
@@ -100,7 +116,7 @@ not contain absolute local paths. Additional metadata and review-state checks re
 | `source_globs` | list of strings | Markdown and QMD under `manuscript/` | Selects files to scan, relative to the repository root. |
 | `exclude_globs` | list of strings | archived content and formatting rules | Removes matching files from the scan. Keep syntax examples and archived manuscript text excluded. |
 | `output_markdown` | project-relative path | `build/open_items.md` | Reviewable text checklist. |
-| `output_docx` | project-relative path | `build/open_items.docx` | Separate Word checklist, formatted with the configured reference DOCX. |
+| `output_docx` | project-relative path | `build/open_items_current.docx` | Separate Word checklist at a stable path, formatted with the configured reference DOCX. |
 
 The default placeholder syntax is:
 

@@ -190,7 +190,7 @@ def test_render_docx_runs_pre_render_hook(
 
     rendered = review.render_docx(root)
 
-    assert rendered == root / "build" / "paper.docx"
+    assert rendered == root / "build" / "paper_current.docx"
     assert calls[0] == [sys.executable, str(hook)]
     assert len(calls) == 1
 

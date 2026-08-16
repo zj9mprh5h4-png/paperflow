@@ -8,7 +8,8 @@ from pathlib import Path
 
 from .commands import PaperflowError, relpath
 from .config import PaperflowConfig
-from .rendering import render_qmd_to_docx
+from .publication import publish_docx_outputs
+from .rendering import stage_qmd_to_docx
 
 HEADING_RE = re.compile(r"^(#{1,2})\s+(.+?)\s*$")
 SECTION_COMMENT_RE = re.compile(r"^<!--\s*Section:\s*(.+?)\s*-->$")
@@ -24,6 +25,13 @@ class OpenItem:
 
 @dataclass(frozen=True)
 class OpenItemsBuild:
+    count: int
+    markdown: Path
+    docx: Path
+
+
+@dataclass(frozen=True)
+class StagedOpenItems:
     count: int
     markdown: Path
     docx: Path
@@ -103,7 +111,7 @@ def open_items_markdown(items: list[OpenItem], config: PaperflowConfig) -> str:
     return "\n".join(output).rstrip() + "\n"
 
 
-def build_open_items(config: PaperflowConfig) -> OpenItemsBuild:
+def stage_open_items(config: PaperflowConfig) -> StagedOpenItems:
     if not config.open_items.enabled:
         raise PaperflowError("Open-items generation is disabled in paperflow.yml.")
     items = collect_open_items(config)
@@ -122,7 +130,7 @@ def build_open_items(config: PaperflowConfig) -> OpenItemsBuild:
         encoding="utf-8",
     )
     try:
-        render_qmd_to_docx(
+        staged = stage_qmd_to_docx(
             source,
             config.open_items.output_docx,
             config=config,
@@ -130,8 +138,24 @@ def build_open_items(config: PaperflowConfig) -> OpenItemsBuild:
         )
     finally:
         source.unlink(missing_ok=True)
-    return OpenItemsBuild(
+    return StagedOpenItems(
         count=len(items),
         markdown=config.open_items.output_markdown,
+        docx=staged,
+    )
+
+
+def build_open_items(config: PaperflowConfig) -> OpenItemsBuild:
+    staged = stage_open_items(config)
+    try:
+        publish_docx_outputs(
+            {config.open_items.output_docx: staged.docx},
+            config=config,
+        )
+    finally:
+        staged.docx.unlink(missing_ok=True)
+    return OpenItemsBuild(
+        count=staged.count,
+        markdown=staged.markdown,
         docx=config.open_items.output_docx,
     )

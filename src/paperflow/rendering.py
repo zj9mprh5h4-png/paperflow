@@ -6,13 +6,14 @@ from pathlib import Path
 from .commands import PaperflowError, relpath, require_tool, run_command
 from .config import PaperflowConfig
 from .docx_math import protect_docx_inline_math
+from .publication import publish_docx_outputs
 from .validation import (
     docx_contains_absolute_paths,
     docx_core_files_present,
 )
 
 
-def render_qmd_to_docx(
+def stage_qmd_to_docx(
     source: Path,
     output: Path,
     *,
@@ -27,8 +28,9 @@ def render_qmd_to_docx(
             f"Word reference document does not exist: {config.word.reference_docx}"
         )
 
-    output.parent.mkdir(parents=True, exist_ok=True)
+    config.paths.work_dir.mkdir(parents=True, exist_ok=True)
     temporary_name = f".paperflow-{uuid.uuid4().hex}.docx"
+    staged = config.paths.work_dir / f".paperflow-staged-{uuid.uuid4().hex}.docx"
     args = [
         "quarto",
         "render",
@@ -61,9 +63,31 @@ def render_qmd_to_docx(
             raise PaperflowError(f"Generated file is not a valid DOCX: {output}")
         if config.word.reject_absolute_paths and docx_contains_absolute_paths(rendered):
             raise PaperflowError(f"Generated DOCX contains an absolute local path: {output}")
-        rendered.replace(output)
+        rendered.replace(staged)
+        return staged
+    except BaseException:
+        staged.unlink(missing_ok=True)
+        raise
     finally:
         for temporary in config.root.rglob(temporary_name):
             temporary.unlink(missing_ok=True)
 
+
+def render_qmd_to_docx(
+    source: Path,
+    output: Path,
+    *,
+    config: PaperflowConfig,
+    execute: bool = True,
+) -> Path:
+    staged = stage_qmd_to_docx(
+        source,
+        output,
+        config=config,
+        execute=execute,
+    )
+    try:
+        publish_docx_outputs({output: staged}, config=config)
+    finally:
+        staged.unlink(missing_ok=True)
     return output

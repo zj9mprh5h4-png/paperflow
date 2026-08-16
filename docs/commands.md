@@ -19,7 +19,8 @@ uv run paperflow <command> --help
 | `paperflow render` | Render only the configured manuscript DOCX. |
 | `paperflow open-items` | Scan configured sources and create the separate OPEN-items Markdown and DOCX reports. |
 | `paperflow build` | Render the manuscript and, when enabled, both OPEN-items reports. |
-| `paperflow clean --yes` | Remove generated files from `paths.output_dir` while preserving `build/.gitkeep`. Without `--yes`, the command refuses to run. |
+| `paperflow clean --yes` | Remove current generated files from `paths.output_dir` while preserving `.gitkeep` and `build.archive_dir`. Without `--yes`, the command refuses to run. |
+| `paperflow clean --yes --include-archive` | Also remove the archived DOCX history. This explicit extra flag prevents accidental loss of prior generated versions. The command refuses, before deleting anything, when `build.archive_dir` holds content other than archived DOCX files. |
 
 ## Word review rounds
 
