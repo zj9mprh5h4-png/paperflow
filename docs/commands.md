@@ -38,13 +38,19 @@ uv run paperflow <command> --help
 
 ## Existing Word manuscripts
 
+The [Word-migration guide](word-migration.md) walks through the complete path from an existing DOCX
+to authoritative Markdown sources.
+
 | Command | Purpose |
 | --- | --- |
 | `paperflow word-baseline --docx FILE [--name NAME]` | Archive an existing DOCX, derive accepted and all-changes Markdown, and compare it with the configured QMD source. Does not change QMD. |
 | `paperflow word-promote [--name NAME]` | Explicitly promote a previously derived accepted baseline into the configured QMD while preserving QMD front matter and copying extracted media. This is the only intentional Word-to-QMD promotion command. |
 
 Both Word-baseline commands require `--force` before replacing existing derived or promoted
-artifacts.
+artifacts. `word-promote` additionally refuses without `--force` when the configured QMD still
+pulls its text in through Quarto include shortcodes, because promotion replaces them; the error
+names the section files that would be left unreferenced. Those files are never deleted, and a
+forced promotion prints them again as `unreferenced:`.
 
 ## Exit status
 

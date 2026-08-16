@@ -251,12 +251,14 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{label}: {path}")
             return 0
         if args.command == "word-promote":
-            outputs = promote_word_baseline_to_qmd(
+            promotion = promote_word_baseline_to_qmd(
                 name=args.name,
                 force=args.force,
             )
-            for label, path in outputs.items():
+            for label, path in promotion.outputs.items():
                 print(f"{label}: {path}")
+            for path in promotion.unreferenced:
+                print(f"unreferenced: {path}")
             return 0
         if args.command == "clean":
             return clean_build(

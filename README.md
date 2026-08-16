@@ -168,6 +168,12 @@ uv run paperflow review-import --round 1 --reviewer reviewer-name --docx returne
 Importing a review never changes `manuscript/index.qmd` automatically. See
 [`reviews/README.md`](reviews/README.md).
 
+## Existing Word manuscripts
+
+To move a manuscript that already exists as a DOCX into Paperflow, follow the
+[Word-migration guide](docs/word-migration.md). Deriving Markdown never touches the QMD source;
+only the separate, explicit promotion step writes to the manuscript.
+
 ## Repository safety
 
 The initial public-release evidence is recorded in

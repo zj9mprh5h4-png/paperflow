@@ -250,7 +250,7 @@ def test_word_baseline_promotion_preserves_frontmatter_and_copies_media(tmp_path
     )
     (media / "image1.png").write_bytes(b"png")
 
-    outputs = review.promote_word_baseline_to_qmd(name="article", root=root, force=True)
+    promotion = review.promote_word_baseline_to_qmd(name="article", root=root, force=True)
 
     promoted = qmd.read_text(encoding="utf-8")
     assert promoted.startswith("---\ntitle: Test\n---\n\n")
@@ -258,4 +258,81 @@ def test_word_baseline_promotion_preserves_frontmatter_and_copies_media(tmp_path
     assert "$$\nx = 1\n$$" in promoted
     assert 'src="media/article/image1.png"' in promoted
     assert (root / "manuscript" / "media" / "article" / "image1.png").exists()
-    assert outputs["manifest"].exists()
+    assert promotion.outputs["qmd"] == qmd
+    assert promotion.unreferenced == ()
+
+
+def test_word_promotion_restores_open_markers_escaped_by_the_converter(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "manuscript").mkdir()
+    qmd = root / "manuscript" / "index.qmd"
+    qmd.write_text("---\ntitle: Test\n---\n\nold body\n", encoding="utf-8")
+    derived = root / "reviews" / "preworkflow-word-baseline" / "article" / "derived"
+    derived.mkdir(parents=True)
+    (derived / "article.accepted.md").write_text(
+        "Intro text.\n\n\\[\\[OPEN: Restore the 2019 cohort citation.\\]\\]\n",
+        encoding="utf-8",
+    )
+
+    review.promote_word_baseline_to_qmd(name="article", root=root, force=True)
+
+    promoted = qmd.read_text(encoding="utf-8")
+    assert "[[OPEN: Restore the 2019 cohort citation.]]" in promoted
+    assert "\\[\\[" not in promoted
+
+
+def _promotable_project(root: Path) -> Path:
+    """Create a template-shaped manuscript that pulls its text in through includes."""
+    sections = root / "manuscript" / "sections"
+    sections.mkdir(parents=True)
+    qmd = root / "manuscript" / "index.qmd"
+    qmd.write_text(
+        "---\ntitle: Test\n---\n\n"
+        "{{< include sections/abstract.md >}}\n\n"
+        "{{< include sections/main-text.md >}}\n\n"
+        "{{< include sections/removed.md >}}\n",
+        encoding="utf-8",
+    )
+    (sections / "abstract.md").write_text("# Abstract\n", encoding="utf-8")
+    (sections / "main-text.md").write_text("# Main text\n", encoding="utf-8")
+    derived = root / "reviews" / "preworkflow-word-baseline" / "article" / "derived"
+    derived.mkdir(parents=True)
+    (derived / "article.accepted.md").write_text("promoted body\n", encoding="utf-8")
+    return qmd
+
+
+def test_word_promotion_refuses_to_silently_replace_include_structure(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    qmd = _promotable_project(root)
+    original = qmd.read_text(encoding="utf-8")
+
+    with pytest.raises(PaperflowError, match="unreferenced") as error:
+        review.promote_word_baseline_to_qmd(name="article", root=root)
+
+    assert error.value.code == "word_promote.includes_present"
+    message = str(error.value)
+    assert "manuscript/sections/abstract.md" in message
+    assert "manuscript/sections/main-text.md" in message
+    assert "removed.md" not in message
+    assert qmd.read_text(encoding="utf-8") == original
+    assert (root / "manuscript" / "sections" / "abstract.md").is_file()
+
+
+def test_forced_word_promotion_reports_the_files_it_leaves_unreferenced(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    qmd = _promotable_project(root)
+
+    promotion = review.promote_word_baseline_to_qmd(name="article", root=root, force=True)
+
+    assert "promoted body" in qmd.read_text(encoding="utf-8")
+    assert "{{< include" not in qmd.read_text(encoding="utf-8")
+    assert promotion.unreferenced == (
+        (root / "manuscript" / "sections" / "abstract.md").resolve(),
+        (root / "manuscript" / "sections" / "main-text.md").resolve(),
+    )
+    for orphan in promotion.unreferenced:
+        assert orphan.is_file()
+    assert promotion.outputs["manifest"].exists()
