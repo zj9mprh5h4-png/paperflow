@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
@@ -53,3 +54,20 @@ def test_local_markdown_links_resolve() -> None:
                 missing.append(f"{document.relative_to(ROOT).as_posix()} -> {target}")
 
     assert not missing, "Missing local Markdown links:\n" + "\n".join(missing)
+
+
+def test_github_yaml_files_parse() -> None:
+    for document in sorted((ROOT / ".github").rglob("*.yml")):
+        parsed = yaml.safe_load(document.read_text(encoding="utf-8"))
+        assert isinstance(parsed, dict), f"Expected a YAML mapping in {document.relative_to(ROOT)}"
+
+
+def test_issue_forms_have_required_fields_and_unique_ids() -> None:
+    issue_forms = ROOT / ".github" / "ISSUE_TEMPLATE"
+    for document in sorted(issue_forms.glob("*.yml")):
+        if document.name == "config.yml":
+            continue
+        parsed = yaml.safe_load(document.read_text(encoding="utf-8"))
+        assert {"name", "description", "body"} <= parsed.keys()
+        ids = [item["id"] for item in parsed["body"] if "id" in item]
+        assert len(ids) == len(set(ids)), f"Duplicate field ID in {document.relative_to(ROOT)}"

@@ -1,0 +1,73 @@
+name: Workflow improvement
+description: Propose a user-facing enhancement after checking the existing scope and documentation.
+title: "[Enhancement]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the workflow need rather than confidential manuscript content. Discuss the idea
+        here and wait for maintainer agreement before opening a pull request.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched existing issues and documentation for this proposal.
+          required: true
+        - label: I can discuss the proposal without sharing confidential material.
+          required: true
+        - label: I will wait for maintainer agreement before opening a pull request.
+          required: true
+
+  - type: dropdown
+    id: workflow_area
+    attributes:
+      label: Workflow area
+      options:
+        - Setup and Doctor
+        - Configuration
+        - Quarto-to-Word rendering
+        - Open Items
+        - Word review rounds
+        - Template and repository safety
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What user problem or repeated manual step should be addressed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired_outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior from a user's perspective.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_workflow
+    attributes:
+      label: Proposed workflow
+      description: Outline a possible solution, including configuration or compatibility concerns.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Note current workarounds or simpler approaches already considered.
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional non-confidential context
+      description: Add links or neutral examples without private project material.

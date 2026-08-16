@@ -1,0 +1,93 @@
+name: Bug report
+description: Report a reproducible problem in the workflow or generated output.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve this workflow. Use only neutral, non-confidential examples.
+        Never attach manuscripts, returned Word reviews, credentials, private templates, or
+        unpublished data. Follow SECURITY.md instead of opening a public issue for a suspected
+        vulnerability.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      options:
+        - label: I searched existing issues and documentation for this problem.
+          required: true
+        - label: I can describe the problem without sharing confidential material.
+          required: true
+        - label: This is not a vulnerability report or other security-sensitive disclosure.
+          required: true
+
+  - type: input
+    id: paperflow_version
+    attributes:
+      label: Paperflow version
+      description: Paste the output of `uv run paperflow --version`.
+      placeholder: paperflow 0.1.0.dev0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: tool_versions
+    attributes:
+      label: uv and Quarto versions
+      description: Provide the output of `uv --version` and `quarto --version`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command that failed
+      description: Include the exact Paperflow command, with private paths and values redacted.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect Paperflow to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Redact usernames, paths, credentials, and manuscript text.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Neutral reproduction
+      description: Provide the smallest reproducible example using synthetic or public content.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional non-confidential context
+      description: Add relevant details that do not expose private project material.
