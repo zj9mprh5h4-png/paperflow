@@ -88,6 +88,10 @@ Replace their neutral text with the new manuscript. You may add or remove sectio
 the include statements in `manuscript/index.qmd` deliberately. Do not edit a generated DOCX as the
 manuscript source.
 
+If the manuscript already exists as a Word document, do not retype it. Follow the
+[Word-migration guide](word-migration.md) instead, which derives Markdown from the DOCX, compares
+it with the current source, and promotes it only after an explicit confirmation.
+
 Keep citations in `references/references.bib` and use stable citation keys. Use TeX syntax for
 equations and Quarto CrossRef identifiers instead of manual figure, table, or equation numbering.
 

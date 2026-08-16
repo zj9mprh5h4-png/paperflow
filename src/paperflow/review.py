@@ -5,6 +5,7 @@ import re
 import shutil
 import sys
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from .commands import (
@@ -103,6 +104,25 @@ def qmd_to_markdown(qmd: Path, output: Path, *, root: Path) -> None:
     )
 
 
+INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(.+?)\s*>\}\}")
+
+
+@dataclass(frozen=True)
+class WordBaselinePromotion:
+    outputs: dict[str, Path]
+    unreferenced: tuple[Path, ...]
+
+
+def included_sources(text: str, qmd: Path) -> tuple[Path, ...]:
+    """Return the existing files that the QMD pulls in with Quarto include shortcodes."""
+    included: list[Path] = []
+    for match in INCLUDE_RE.finditer(text):
+        target = (qmd.parent / match.group(1).strip().strip("\"'")).resolve()
+        if target.is_file() and target not in included:
+            included.append(target)
+    return tuple(included)
+
+
 def split_qmd_frontmatter(text: str) -> tuple[str, str]:
     if not text.startswith("---\n"):
         raise PaperflowError("Existing QMD does not start with YAML front matter.")
@@ -127,6 +147,10 @@ def normalise_word_markdown_for_qmd(markdown: str, *, media_prefix: str) -> str:
         body,
         flags=re.DOTALL,
     )
+    # Pandoc escapes the doubled brackets of an OPEN placeholder when it writes Markdown.
+    # Left escaped, the marker no longer matches open_items.marker_pattern and the
+    # placeholder would silently disappear from the OPEN-items report after promotion.
+    body = body.replace(r"\[\[", "[[").replace(r"\]\]", "]]")
     if media_prefix:
         body = body.replace('src="media/', f'src="{media_prefix}/')
         body = body.replace("](media/", f"]({media_prefix}/")
@@ -210,7 +234,7 @@ def promote_word_baseline_to_qmd(
     name: str = "article",
     root: Path | None = None,
     force: bool = False,
-) -> dict[str, Path]:
+) -> WordBaselinePromotion:
     project_root = root or find_project_root()
     config = load_config(project_root)
     slug = reviewer_slug(name)
@@ -225,6 +249,23 @@ def promote_word_baseline_to_qmd(
 
     qmd_path = config.project.manuscript
     existing = qmd_path.read_text(encoding="utf-8")
+    included = included_sources(existing, qmd_path)
+    if included and not force:
+        listed = ", ".join(relpath(path, project_root) for path in included)
+        diff = relpath(derived_dir / f"{slug}.accepted.diff.md", project_root)
+        raise PaperflowError(
+            f"Promotion would replace the include structure of "
+            f"{relpath(qmd_path, project_root)} and leave these files unreferenced: {listed}",
+            code="word_promote.includes_present",
+            remediation=(
+                f"Review {diff} and confirm that the Word-derived text should become the "
+                "authoritative source.",
+                "Rerun with --force to promote. The listed files are kept on disk, not "
+                "deleted, and can be reused when you rebuild the include structure.",
+                "See docs/word-migration.md for splitting the promoted text back into "
+                "sections.",
+            ),
+        )
     frontmatter, _ = split_qmd_frontmatter(existing)
 
     media_source = derived_dir / "media"
@@ -268,12 +309,15 @@ def promote_word_baseline_to_qmd(
             "source_docx_remains_archived": True,
         },
     )
-    return {
-        "qmd": qmd_path,
-        "accepted": accepted_markdown,
-        "media": media_destination,
-        "manifest": baseline_root / "promotion-manifest.json",
-    }
+    return WordBaselinePromotion(
+        outputs={
+            "qmd": qmd_path,
+            "accepted": accepted_markdown,
+            "media": media_destination,
+            "manifest": baseline_root / "promotion-manifest.json",
+        },
+        unreferenced=included,
+    )
 
 
 def start_review(
