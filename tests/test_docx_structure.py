@@ -38,14 +38,51 @@ def test_docx_absolute_path_scan(tmp_path: Path) -> None:
     make_minimal_docx(docx, b'<w:document xmlns:w="w">C:\\Users\\example\\secret.png</w:document>')
 
     assert docx_contains_absolute_paths(docx)
-    assert docx_reference_status(docx) == (True, False)
+    status = docx_reference_status(docx)
+    assert status.valid
+    assert not status.path_safe
+    assert status.absolute_paths == ("word/document.xml (embedded path)",)
+
+
+def test_docx_absolute_paths_are_reported_by_part_and_kind_without_the_path(
+    tmp_path: Path,
+) -> None:
+    docx = tmp_path / "template.docx"
+    make_minimal_docx(docx, b'<w:document xmlns:w="w"><w:body/></w:document>')
+    with zipfile.ZipFile(docx, "a") as archive:
+        archive.writestr(
+            "word/_rels/settings.xml.rels",
+            b'<Relationships><Relationship Type="http://schemas.openxmlformats.org/'
+            b'officeDocument/2006/relationships/attachedTemplate" '
+            b'Target="file:///C:\\Users\\example\\Publisher.dotx" '
+            b'TargetMode="External"/></Relationships>',
+        )
+        archive.writestr(
+            "docProps/app.xml",
+            b"<Properties><HyperlinkBase>C:\\Users\\example\\figures"
+            b"</HyperlinkBase></Properties>",
+        )
+
+    status = docx_reference_status(docx)
+
+    assert not status.path_safe
+    assert set(status.absolute_paths) == {
+        "word/_rels/settings.xml.rels (attached document template)",
+        "docProps/app.xml (hyperlink base)",
+    }
+    # The account name of whoever produced the template must not leak into diagnostics.
+    assert not any("example" in location for location in status.absolute_paths)
 
 
 def test_docx_reference_status_rejects_non_docx(tmp_path: Path) -> None:
     path = tmp_path / "not-a-docx.docx"
     path.write_text("not a zip archive", encoding="utf-8")
 
-    assert docx_reference_status(path) == (False, False)
+    status = docx_reference_status(path)
+
+    assert not status.valid
+    assert not status.path_safe
+    assert status.absolute_paths == ()
 
 
 def test_docx_revision_counts_track_word_changes(tmp_path: Path) -> None:

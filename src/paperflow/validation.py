@@ -20,6 +20,14 @@ from .config import CONFIG_FILE, LOCAL_CONFIG_FILE, load_config
 ABSOLUTE_WINDOWS_RE = re.compile(rb"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^<>\"]+")
 ABSOLUTE_POSIX_RE = re.compile(rb"(?<![A-Za-z]):?/(Users|home|tmp|var|mnt)/[^<>\"]+")
 
+# Markers that explain why a DOCX part carries an absolute path, most specific first.
+ABSOLUTE_PATH_KINDS: tuple[tuple[bytes, str], ...] = (
+    (b"attachedTemplate", "attached document template"),
+    (b"HyperlinkBase", "hyperlink base"),
+    (b"subDoc", "subdocument link"),
+    (b'TargetMode="External"', "external relationship"),
+)
+
 
 @dataclass(frozen=True)
 class DoctorCheck:
@@ -68,14 +76,50 @@ def docx_contains_absolute_paths(path: Path) -> bool:
     return False
 
 
-def docx_reference_status(path: Path) -> tuple[bool, bool]:
-    """Return whether a reference file is a DOCX and free of absolute local paths."""
+def _absolute_path_kind(content: bytes) -> str:
+    for marker, label in ABSOLUTE_PATH_KINDS:
+        if marker in content:
+            return label
+    return "embedded path"
+
+
+def docx_absolute_path_locations(path: Path) -> tuple[str, ...]:
+    """Name the DOCX parts that carry an absolute local path, and what kind it is.
+
+    The path itself is deliberately not reported. It normally contains the account
+    name of whoever produced the template, and Doctor output is meant to stay safe
+    to paste into an issue. The part and the kind are enough to repair the file.
+    """
+    locations: list[str] = []
+    with zipfile.ZipFile(path) as archive:
+        for name in archive.namelist():
+            if not name.endswith((".xml", ".rels")):
+                continue
+            content = archive.read(name)
+            if ABSOLUTE_WINDOWS_RE.search(content) or ABSOLUTE_POSIX_RE.search(content):
+                locations.append(f"{name} ({_absolute_path_kind(content)})")
+    return tuple(locations)
+
+
+@dataclass(frozen=True)
+class ReferenceDocxStatus:
+    valid: bool
+    path_safe: bool
+    absolute_paths: tuple[str, ...] = ()
+
+
+def docx_reference_status(path: Path) -> ReferenceDocxStatus:
+    """Report whether a reference file is a DOCX and free of absolute local paths."""
     try:
         valid = docx_core_files_present(path)
-        path_safe = valid and not docx_contains_absolute_paths(path)
+        locations = docx_absolute_path_locations(path) if valid else ()
     except (OSError, zipfile.BadZipFile):
-        return False, False
-    return valid, path_safe
+        return ReferenceDocxStatus(valid=False, path_safe=False)
+    return ReferenceDocxStatus(
+        valid=valid,
+        path_safe=valid and not locations,
+        absolute_paths=locations,
+    )
 
 
 def docx_revision_counts(path: Path) -> tuple[int, int]:
@@ -192,38 +236,40 @@ def doctor(*, allow_missing_tools: bool = False, output_format: str = "text") ->
                 )
             )
             if reference_exists:
-                valid_reference, safe_reference = docx_reference_status(
-                    config.word.reference_docx
-                )
+                reference = docx_reference_status(config.word.reference_docx)
                 checks.append(
                     DoctorCheck(
                         "word.reference.structure",
                         "Word reference DOCX structure",
-                        valid_reference,
-                        "valid" if valid_reference else "invalid or unreadable DOCX",
+                        reference.valid,
+                        "valid" if reference.valid else "invalid or unreadable DOCX",
                         ()
-                        if valid_reference
+                        if reference.valid
                         else (
                             "Replace the file with a valid Word DOCX and rerun Doctor.",
                             "Follow docs/word-template.md before using a publisher template.",
                         ),
                     )
                 )
-                if valid_reference:
+                if reference.valid:
                     checks.append(
                         DoctorCheck(
                             "word.reference.paths",
                             "Word reference local paths",
-                            safe_reference,
+                            reference.path_safe,
                             "none found"
-                            if safe_reference
-                            else "absolute local path found; use a sanitized template",
+                            if reference.path_safe
+                            else "absolute local path in "
+                            + "; ".join(reference.absolute_paths),
                             ()
-                            if safe_reference
+                            if reference.path_safe
                             else (
-                                "Sanitize a copy of the DOCX to remove embedded absolute paths.",
-                                "Keep the original private template outside version control and "
-                                "follow docs/word-template.md.",
+                                "Follow the 'Remove absolute local paths' steps in "
+                                "docs/word-template.md; they name the Word setting behind each "
+                                "reported part.",
+                                "Repair a copy of the template rather than disabling "
+                                "word.reject_absolute_paths, and keep the original private "
+                                "template outside version control.",
                             ),
                         )
                     )
