@@ -27,6 +27,9 @@ ABSOLUTE_PATH_KINDS: tuple[tuple[bytes, str], ...] = (
     (b"subDoc", "subdocument link"),
     (b'TargetMode="External"', "external relationship"),
 )
+# Human-readable image metadata. Word stores the original file path here when a picture
+# is inserted, which is invisible in the document body but travels with every copy.
+ALT_TEXT_ATTRIBUTE_RE = re.compile(rb'(?:descr|alt|title)="[^"]*"')
 
 
 @dataclass(frozen=True)
@@ -76,7 +79,22 @@ def docx_contains_absolute_paths(path: Path) -> bool:
     return False
 
 
-def _absolute_path_kind(content: bytes) -> str:
+def absolute_path_matches(content: bytes) -> list[int]:
+    """Return the start offset of every absolute local path in an XML part."""
+    return sorted(
+        match.start()
+        for pattern in (ABSOLUTE_WINDOWS_RE, ABSOLUTE_POSIX_RE)
+        for match in pattern.finditer(content)
+    )
+
+
+def _absolute_path_kind(
+    content: bytes,
+    start: int,
+    alt_text_spans: list[tuple[int, int]],
+) -> str:
+    if any(begin <= start < end for begin, end in alt_text_spans):
+        return "image alt text"
     for marker, label in ABSOLUTE_PATH_KINDS:
         if marker in content:
             return label
@@ -96,8 +114,17 @@ def docx_absolute_path_locations(path: Path) -> tuple[str, ...]:
             if not name.endswith((".xml", ".rels")):
                 continue
             content = archive.read(name)
-            if ABSOLUTE_WINDOWS_RE.search(content) or ABSOLUTE_POSIX_RE.search(content):
-                locations.append(f"{name} ({_absolute_path_kind(content)})")
+            starts = absolute_path_matches(content)
+            if not starts:
+                continue
+            alt_text_spans = [
+                (match.start(), match.end())
+                for match in ALT_TEXT_ATTRIBUTE_RE.finditer(content)
+            ]
+            kinds = dict.fromkeys(
+                _absolute_path_kind(content, start, alt_text_spans) for start in starts
+            )
+            locations.extend(f"{name} ({kind})" for kind in kinds)
     return tuple(locations)
 
 

@@ -86,9 +86,16 @@ The template you point at is never modified. The repaired copy goes to
 requires `--force`.
 
 The command removes the attached document template, the hyperlink base, the company and manager
-entries, and clears the author and last-modified-by names. Styles, page geometry, headers, footers,
-numbering, and every other part of the package are left byte-identical, because those are exactly
-what a reference document is for.
+entries, clears the author and last-modified-by names, and strips file paths out of image
+alternative text. Styles, page geometry, headers, footers, numbering, and every other part of the
+package are left byte-identical, because those are exactly what a reference document is for.
+
+The alt-text case is the one that catches people out. Word stores the original file path of a
+picture in its alternative text, so a journal logo in a header commonly carries something like
+`C:\Users\<author>\Documents\Templates\logo1.jpg`. Nothing in the document body shows it, `Alt+F9`
+does not reveal it because it is not a field, and the picture itself is embedded and unaffected.
+The path still travels with every copy of the template and reaches every generated document.
+Paperflow removes only the path; a real description next to it is preserved.
 
 It reports what it did and what is left:
 
@@ -124,7 +131,8 @@ several.
 | hyperlink base | A base folder prepended to every relative hyperlink | File, Info, Properties, **Advanced Properties**, *Summary* tab, clear **Hyperlink base**. |
 | external relationship | Linked images or objects that were inserted as a link instead of embedded | File, Info, **Edit Links to Files**, then break each link. Reinsert the image with **Insert** instead of **Insert and Link** if it must stay. |
 | subdocument link | A master document that still references subdocuments | Switch to Outline view, **Show Document**, then **Unlink** each subdocument. |
-| embedded path | A path inside field codes or an embedded object | Press `Alt+F9` to show field codes, then find and remove the path. |
+| image alt text | The original file path Word stored when the picture was inserted | Right-click the picture, **View Alt Text**, and clear the description. In a header, double-click into the header area first. `sanitize-template` already does this. |
+| embedded path | A path inside field codes or an embedded object | Press `Alt+F9` to show field codes, then find and remove the path. Inside a header, double-click into the header area first, or field codes stay hidden. |
 
 Word menu labels depend on the interface language; the paths above use the English interface.
 

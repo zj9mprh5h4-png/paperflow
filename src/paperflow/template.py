@@ -15,7 +15,12 @@ from pathlib import Path
 
 from .commands import PaperflowError
 from .docx_package import read_docx_members, write_docx_members
-from .validation import docx_absolute_path_locations, docx_core_files_present
+from .validation import (
+    ABSOLUTE_POSIX_RE,
+    ABSOLUTE_WINDOWS_RE,
+    docx_absolute_path_locations,
+    docx_core_files_present,
+)
 
 SETTINGS_MEMBER = "word/settings.xml"
 SETTINGS_RELATIONSHIPS_MEMBER = "word/_rels/settings.xml.rels"
@@ -70,6 +75,35 @@ def _clear(
     return True
 
 
+ALT_TEXT_VALUE_RE = re.compile(rb'((?:descr|alt|title)=")([^"]*)(")')
+
+
+def _strip_paths_from_alt_text(members: dict[str, bytes]) -> bool:
+    """Remove file paths from image alt text while keeping any real description.
+
+    Word writes the original file path into an image's alternative text. The picture
+    itself is embedded, so the path is metadata only, but it travels with every copy of
+    the template and reaches every generated document.
+    """
+    changed = False
+
+    def repair(match: re.Match[bytes]) -> bytes:
+        value = match.group(2)
+        stripped = ABSOLUTE_POSIX_RE.sub(b"", ABSOLUTE_WINDOWS_RE.sub(b"", value))
+        if stripped == value:
+            return match.group(0)
+        return match.group(1) + stripped.strip(b" \t,;-") + match.group(3)
+
+    for name, content in members.items():
+        if not name.endswith((".xml", ".rels")):
+            continue
+        repaired = ALT_TEXT_VALUE_RE.sub(repair, content)
+        if repaired != content:
+            members[name] = repaired
+            changed = True
+    return changed
+
+
 def _sanitise_members(members: dict[str, bytes]) -> list[str]:
     removed: list[str] = []
 
@@ -98,6 +132,8 @@ def _sanitise_members(members: dict[str, bytes]) -> list[str]:
         b"<cp:lastModifiedBy></cp:lastModifiedBy>",
     ):
         removed.append("last-modified-by name")
+    if _strip_paths_from_alt_text(members):
+        removed.append("file paths in image alt text")
     return removed
 
 

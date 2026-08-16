@@ -103,6 +103,59 @@ def test_sanitize_keeps_the_rest_of_the_package_byte_identical(tmp_path: Path) -
     assert b"attachedTemplate" not in settings
 
 
+# Shape taken from a real Frontiers template: the picture is embedded, but both
+# alt-text attributes carry the original author's file path.
+LOGO_HEADER = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    b'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+    b'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
+    b'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+    b"<w:p><w:r><w:drawing><wp:inline>"
+    b'<wp:docPr id="6" name="Picture 6" '
+    b'descr="C:\\Users\\Elaine.Scott\\Documents\\LaTex\\Templates\\logo1.jpg"/>'
+    b'<pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="Picture 1" '
+    b'descr="Journal masthead, C:\\Users\\Elaine.Scott\\Documents\\logo1.jpg"/>'
+    b"</pic:nvPicPr></pic:pic>"
+    b"</wp:inline></w:drawing></w:r></w:p></w:hdr>"
+)
+
+
+def test_sanitize_strips_file_paths_from_image_alt_text(tmp_path: Path) -> None:
+    source = tmp_path / "Journal.docx"
+    publisher_template(source)
+    with zipfile.ZipFile(source, "a") as archive:
+        archive.writestr("word/header3.xml", LOGO_HEADER)
+    target = tmp_path / "reference.local.docx"
+
+    result = sanitise_reference_docx(source=source, target=target)
+
+    assert "file paths in image alt text" in result.removed
+    assert result.remaining == ()
+    with zipfile.ZipFile(target) as archive:
+        header = archive.read("word/header3.xml")
+    assert b"Elaine.Scott" not in header
+    assert b'name="Picture 6"' in header
+    # A real description next to the path survives; only the path is taken out.
+    assert b'descr="Journal masthead"' in header
+    assert b'descr=""' in header
+
+
+def test_sanitize_keeps_alt_text_that_carries_no_path(tmp_path: Path) -> None:
+    source = tmp_path / "Journal.docx"
+    publisher_template(source)
+    with zipfile.ZipFile(source, "a") as archive:
+        archive.writestr(
+            "word/header4.xml",
+            b'<w:hdr xmlns:w="w"><wp:docPr descr="Frontiers journal logo"/></w:hdr>',
+        )
+    target = tmp_path / "reference.local.docx"
+
+    sanitise_reference_docx(source=source, target=target)
+
+    with zipfile.ZipFile(target) as archive:
+        assert b'descr="Frontiers journal logo"' in archive.read("word/header4.xml")
+
+
 def test_sanitize_reports_paths_it_cannot_repair(tmp_path: Path) -> None:
     source = tmp_path / "Journal.docx"
     publisher_template(source, linked_image=True)
