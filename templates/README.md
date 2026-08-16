@@ -12,3 +12,6 @@ committed or distributed, verify all of the following:
 - the file contains styles and layout only, not manuscript text.
 
 `templates/*.docx` is ignored until the public template policy is implemented.
+
+See [`docs/word-template.md`](../docs/word-template.md) for the complete local setup, validation,
+and troubleshooting workflow.

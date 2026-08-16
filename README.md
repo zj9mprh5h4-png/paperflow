@@ -79,6 +79,11 @@ word:
 Run `uv run paperflow config-show` to inspect the effective merged configuration and
 `uv run paperflow doctor` to validate configured paths and tools.
 
+See the [complete configuration reference](docs/configuration.md) for every supported field. To
+start a new project, follow the [First manuscript guide](docs/first-manuscript.md). The
+[Word-template guide](docs/word-template.md) explains how to keep publisher or institutional DOCX
+templates local and validate them before use.
+
 ## Open placeholders
 
 Use the following syntax anywhere in the configured manuscript sources:

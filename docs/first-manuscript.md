@@ -1,0 +1,124 @@
+# First manuscript
+
+This guide starts with a clean Paperflow template and ends with an editable manuscript DOCX plus a
+separate OPEN-items DOCX. The QMD and Markdown files remain the authoritative sources.
+
+## 1. Create a project copy
+
+When Paperflow is published as a GitHub template, use **Use this template** to create a new
+repository. During local development, create an intentional project copy without copying `.venv`,
+`build`, `.work`, `.quarto`, review files, or private Word templates.
+
+Open a terminal in the new repository and confirm that Git points to the intended project:
+
+```bash
+git rev-parse --show-toplevel
+git status --short
+```
+
+## 2. Install and validate prerequisites
+
+Install Git, `uv`, and Quarto yourself as described in [Setup](setup.md). Then create the locked
+Python environment:
+
+```bash
+uv sync --frozen --extra dev
+uv run paperflow doctor
+```
+
+Resolve every blocking Doctor result before editing manuscript content.
+
+## 3. Set the shared project configuration
+
+Edit `paperflow.yml` first:
+
+```yaml
+project:
+  name: my-manuscript
+  language: en
+  manuscript: manuscript/index.qmd
+  formatting_rules: manuscript/manuscript_formatting_rules.md
+
+build:
+  manuscript_filename: manuscript.docx
+```
+
+Keep shared settings version-controlled. See the [configuration reference](configuration.md) before
+changing paths, marker expressions, safety options, or review behavior.
+
+## 4. Replace the neutral manuscript
+
+`manuscript/index.qmd` is the authoritative entry point. The baseline includes three Markdown
+sections:
+
+- `manuscript/sections/front-matter.md`;
+- `manuscript/sections/abstract.md`;
+- `manuscript/sections/main-text.md`.
+
+Replace their neutral text with the new manuscript. You may add or remove section files, but update
+the include statements in `manuscript/index.qmd` deliberately. Do not edit a generated DOCX as the
+manuscript source.
+
+Keep citations in `references/references.bib` and use stable citation keys. Use TeX syntax for
+equations and Quarto CrossRef identifiers instead of manual figure, table, or equation numbering.
+
+## 5. Adapt the formatting rules
+
+Review `manuscript/manuscript_formatting_rules.md`. Shorten, extend, or replace rules to match the
+project, publisher, language, terminology, units, and scientific review requirements. Keep this
+file version-controlled so humans and AI assistants use the same constraints.
+
+Formatting rules are instructions only. They are excluded from manuscript rendering and from the
+default OPEN-items scan.
+
+## 6. Record unresolved work
+
+Place precise markers in manuscript Markdown or QMD:
+
+```text
+[[OPEN: Verify the sample size against the final analysis dataset.]]
+```
+
+Do not use OPEN markers for information that has already been resolved. Paperflow groups the
+markers by manuscript headings and records their source file and line number.
+
+## 7. Configure an optional Word template
+
+The first build can use Quarto's default Word formatting. For publisher or institutional
+formatting, follow the [Word-template guide](word-template.md). Keep private or unreviewed DOCX files
+under `templates/` and configure them only through the ignored `.paperflow.local.yml`.
+
+Run Doctor again after changing the template:
+
+```bash
+uv run paperflow doctor
+```
+
+## 8. Build and inspect the outputs
+
+```bash
+uv run paperflow build
+```
+
+The baseline configuration creates:
+
+- `build/paper.docx` — editable manuscript output;
+- `build/open_items.md` — reviewable task checklist;
+- `build/open_items.docx` — separate Word task checklist.
+
+Inspect the Word documents for page layout, styles, figures, tables, equations, citations, headers,
+footers, and OPEN-item completeness. A successful command proves structural generation, not final
+scientific or typographic approval.
+
+## 9. Check source-control boundaries
+
+Before the first project commit:
+
+```bash
+git status --short
+git check-ignore .paperflow.local.yml templates/reference.local.docx build/paper.docx
+```
+
+Only project sources, shared configuration, documentation, and intentionally public assets should
+be committed. Never commit credentials, returned review files, private templates, generated Word
+documents, `.venv`, or raw confidential data.
