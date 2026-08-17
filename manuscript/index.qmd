@@ -2,8 +2,13 @@
 from: markdown+tex_math_single_backslash
 ---
 
+<!-- The section files in manuscript/sections/ decide what this manuscript contains.
+     'paperflow sections-sync' regenerates the list between the markers below from those
+     files, in filename order. Everything outside the markers is left alone. Remove the
+     markers to maintain the list by hand instead. -->
+
+<!-- paperflow:sections -->
 {{< include sections/front-matter.md >}}
-
 {{< include sections/abstract.md >}}
-
 {{< include sections/main-text.md >}}
+<!-- /paperflow:sections -->

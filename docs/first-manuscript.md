@@ -84,9 +84,31 @@ sections:
 - `manuscript/sections/abstract.md`;
 - `manuscript/sections/main-text.md`.
 
-Replace their neutral text with the new manuscript. You may add or remove section files, but update
-the include statements in `manuscript/index.qmd` deliberately. Do not edit a generated DOCX as the
-manuscript source.
+Replace their neutral text with the new manuscript. Do not edit a generated DOCX as the manuscript
+source.
+
+The section files decide what the manuscript contains; `manuscript/index.qmd` holds the resulting
+include list between two markers:
+
+```text
+<!-- paperflow:sections -->
+{{< include sections/front-matter.md >}}
+...
+<!-- /paperflow:sections -->
+```
+
+After adding, renaming, or deleting a section file, regenerate that list:
+
+```bash
+uv run paperflow sections-sync
+```
+
+The list is rebuilt in filename order, so a numeric prefix such as `01-`, `02-` fixes the reading
+order. Only the lines between the markers change; anything you write elsewhere in the entry point
+stays. `paperflow build` never rewrites the list on its own — Paperflow does not edit manuscript
+sources as a side effect of rendering — and Doctor reports drift in either direction: a section
+file nobody includes, or an include pointing at a file that is gone. Removing the markers opts out
+and returns the list to manual care.
 
 If the manuscript already exists as a Word document, do not retype it. Follow the
 [Word-migration guide](word-migration.md) instead, which derives Markdown from the DOCX, compares

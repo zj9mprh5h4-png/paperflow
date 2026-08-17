@@ -18,7 +18,12 @@ from .commands import (
     run_command,
 )
 from .config import CONFIG_FILE, LOCAL_CONFIG_FILE, PaperflowConfig, load_config
-from .sources import custom_style_requests, rendered_sources
+from .sources import (
+    custom_style_requests,
+    include_targets,
+    rendered_sources,
+    section_files,
+)
 
 ABSOLUTE_WINDOWS_RE = re.compile(rb"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^<>\"]+")
 ABSOLUTE_POSIX_RE = re.compile(rb"(?<![A-Za-z]):?/(Users|home|tmp|var|mnt)/[^<>\"]+")
@@ -161,6 +166,65 @@ def docx_revision_counts(path: Path) -> tuple[int, int]:
     return insertions, deletions
 
 
+def _sections_check(config: PaperflowConfig) -> DoctorCheck:
+    """Report drift between the section files on disk and the manuscript's include list.
+
+    Splitting a manuscript into files makes deletion easy and forgetting the include
+    line just as easy. Both directions matter: an include pointing at nothing renders a
+    hole, and a file nobody includes is content silently left out of every build.
+    """
+    manuscript = config.project.manuscript
+    try:
+        text = manuscript.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return DoctorCheck(
+            "manuscript.sections",
+            "manuscript sections and include list",
+            False,
+            f"could not read {relpath(manuscript, config.root)}: {exc}",
+            ("Restore the manuscript entry point named by project.manuscript.",),
+            error_code="manuscript.unreadable",
+        )
+
+    targets = include_targets(text, manuscript)
+    missing = [path for path in targets if not path.is_file()]
+    present = section_files(config.project.sections_dir)
+    unincluded = [path for path in present if path not in targets]
+
+    if not missing and not unincluded:
+        detail = f"{len(targets)} include(s) resolve, {len(present)} section file(s) in use"
+        return DoctorCheck(
+            "manuscript.sections",
+            "manuscript sections and include list",
+            True,
+            detail,
+        )
+
+    reported: list[str] = []
+    remediation: list[str] = []
+    if missing:
+        listed = ", ".join(relpath(path, config.root) for path in missing)
+        reported.append(f"included but absent: {listed}")
+        remediation.append(
+            "Restore the listed file, or remove its include line from the manuscript."
+        )
+    if unincluded:
+        listed = ", ".join(relpath(path, config.root) for path in unincluded)
+        reported.append(f"present but never included: {listed}")
+        remediation.append(
+            "Run uv run paperflow sections-sync to rebuild the include list from the "
+            "section files, or delete the file if it is not wanted."
+        )
+    return DoctorCheck(
+        "manuscript.sections",
+        "manuscript sections and include list",
+        False,
+        "; ".join(reported),
+        tuple(remediation),
+        error_code="manuscript.section_drift",
+    )
+
+
 def _custom_style_check(config: PaperflowConfig) -> DoctorCheck:
     """Verify that every Word style the manuscript requests exists in the reference.
 
@@ -290,6 +354,8 @@ def doctor(*, allow_missing_tools: bool = False, output_format: str = "text") ->
                 ),
             )
         )
+        if manuscript_exists:
+            checks.append(_sections_check(config))
         formatting_rules_exist = config.project.formatting_rules.is_file()
         checks.append(
             DoctorCheck(

@@ -22,6 +22,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "name": "paperflow-project",
         "language": "en",
         "manuscript": "manuscript/index.qmd",
+        "sections_dir": "manuscript/sections",
         "formatting_rules": "manuscript/manuscript_formatting_rules.md",
     },
     "paths": {
@@ -70,6 +71,7 @@ class ProjectSettings:
     name: str
     language: str
     manuscript: Path
+    sections_dir: Path
     formatting_rules: Path
 
 
@@ -510,6 +512,11 @@ def load_config(root: Path | None = None) -> PaperflowConfig:
             name=_string(project["name"], "project.name"),
             language=_string(project["language"], "project.language"),
             manuscript=_inside_project(project_root, project["manuscript"], "project.manuscript"),
+            sections_dir=_inside_project(
+                project_root,
+                project["sections_dir"],
+                "project.sections_dir",
+            ),
             formatting_rules=_inside_project(
                 project_root,
                 project["formatting_rules"],
