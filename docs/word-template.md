@@ -199,22 +199,45 @@ marks as hidden. Names must be used exactly as printed, including capitalisation
 The template already contains the block, correctly formatted. Instead of retyping it, convert it:
 
 ```bash
-uv run paperflow template-front-matter --out manuscript/sections/front-matter.md --force
+uv run paperflow template-sections --split --force
 ```
 
-Every paragraph of the template body becomes Markdown that requests the same style, superscript
-runs become `^…^`, headings become `#` levels, and unstyled paragraphs stay plain text. Without
-`--out` the Markdown goes to standard output, so it can be inspected before anything is written.
-Notes about what was skipped go to standard error, which keeps redirected output clean:
+Every paragraph of the template body becomes Markdown that requests the same style. Superscript
+runs become `^…^`, subscript `~…~`, headings become `#` levels, unstyled paragraphs stay plain
+text, and Markdown special characters are escaped so an asterisk in an author block does not start
+emphasis.
+
+`--split` writes one file per top-level heading into `manuscript/sections/`, numbered in document
+order, and prints the matching include lines:
 
 ```text
-note: styles requested: Frontiers Author, Frontiers Affiliation
-note: skipped 1 table(s)
-note: review the result: it is the template's placeholder text, not yours
+section: .../manuscript/sections/00-front-matter.md
+section: .../manuscript/sections/01-introduction.md
+section: .../manuscript/sections/02-manuscript-formatting.md
+
+{{< include sections/00-front-matter.md >}}
+{{< include sections/01-introduction.md >}}
+{{< include sections/02-manuscript-formatting.md >}}
 ```
 
-Tables and images are not converted. What you get is the publisher's placeholder text — "First
-Author", "Laboratory X", "keyword1" — as a starting point to overwrite, not as content to keep.
+`00-front-matter.md` holds everything before the first heading: title, authors, affiliations, and
+keywords carry no heading of their own and would otherwise be lost.
+
+**Delete every section you do not need.** A journal template ships a full article skeleton with
+guidance text — "For full guidelines please refer to…", article-type notes, formatting advice.
+None of that belongs in a manuscript. Removing a file and its include line is all it takes.
+
+Without `--split` the whole body goes to standard output as one document, or to `--out` as a single
+file. Notes go to standard error, which keeps redirected Markdown clean.
+
+Tables and images are not converted, and are reported as skipped. Hyperlink text is kept but the
+target URL is not. What you get is the publisher's placeholder text — "First Author",
+"Laboratory X", "keyword1" — as a starting point to overwrite.
+
+Splitting needs the template to use Word's real `Heading 1` style for its section titles. A
+template that styles section titles some other way has nothing to split on; the command says so
+and writes a single file. Adapting such a template to use proper heading styles is worth doing
+once, and pays off for every document built from it.
 
 ### Request a style
 
