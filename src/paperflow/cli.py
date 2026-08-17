@@ -20,7 +20,7 @@ from .review import (
     render_docx,
     start_review,
 )
-from .template import sanitise_reference_docx
+from .template import reference_docx_styles, sanitise_reference_docx
 from .validation import doctor
 from .workflow import build_project
 
@@ -101,6 +101,22 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Replace an existing output file.",
+    )
+
+    styles = subparsers.add_parser(
+        "template-styles",
+        help="List the Word styles a reference template offers for custom-style.",
+    )
+    styles.add_argument(
+        "--docx",
+        type=Path,
+        help="Template to inspect. Defaults to the configured word.reference_docx.",
+    )
+    styles.add_argument(
+        "--all",
+        action="store_true",
+        dest="show_all",
+        help="Also list styles Word marks as hidden, which templates rarely intend for use.",
     )
 
     start = subparsers.add_parser("review-start", help="Create a Word review round.")
@@ -270,6 +286,50 @@ def main(argv: list[str] | None = None) -> int:
                 f"{relpath(result.path, root)} --force"
             )
             print("next: uv run paperflow doctor")
+            return 0
+        if args.command == "template-styles":
+            configured = load_config().word.reference_docx
+            if args.docx is None and configured is None:
+                raise PaperflowError(
+                    "No Word reference document is configured.",
+                    code="template_styles.not_configured",
+                    remediation=(
+                        "Pass --docx with the template to inspect.",
+                        "Or configure one with uv run paperflow init-local "
+                        "--reference-docx <path> --force.",
+                    ),
+                )
+            source = resolve_input_path(args.docx) if args.docx is not None else configured
+            found = reference_docx_styles(source)
+            visible = [style for style in found if args.show_all or not style.hidden]
+            print(f"reference: {source}")
+            for kind in ("paragraph", "character"):
+                automatic = [
+                    style.name
+                    for style in visible
+                    if style.kind == kind and style.applied_by_pandoc
+                ]
+                available = [
+                    style.name
+                    for style in visible
+                    if style.kind == kind and not style.applied_by_pandoc
+                ]
+                if automatic:
+                    print(f"\n{kind} styles Pandoc applies on its own:")
+                    for name in automatic:
+                        print(f"  {name}")
+                if available:
+                    print(f"\n{kind} styles available through custom-style:")
+                    for name in available:
+                        print(f"  {name}")
+            hidden = len(found) - len(visible)
+            if hidden:
+                print(f"\n{hidden} hidden style(s) omitted; pass --all to list them.")
+            print(
+                '\nUse a name exactly as printed: ::: {custom-style="Name"} for a paragraph, '
+                '[text]{custom-style="Name"} inline.'
+            )
+            print("See docs/word-template.md for worked examples.")
             return 0
         if args.command == "review-start":
             outgoing = start_review(

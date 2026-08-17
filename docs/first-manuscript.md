@@ -95,6 +95,12 @@ it with the current source, and promotes it only after an explicit confirmation.
 Keep citations in `references/references.bib` and use stable citation keys. Use TeX syntax for
 equations and Quarto CrossRef identifiers instead of manual figure, table, or equation numbering.
 
+An author block, affiliations, correspondence details, and keywords belong in
+`manuscript/sections/front-matter.md`, not in a Word template: template body text is discarded
+during rendering. To give those paragraphs the publisher's formatting, see
+[Map manuscript content onto template styles](word-template.md#map-manuscript-content-onto-template-styles).
+A document that needs no author block can drop the file and its include.
+
 ## 5. Adapt the formatting rules
 
 Review `manuscript/manuscript_formatting_rules.md`. Shorten, extend, or replace rules to match the
