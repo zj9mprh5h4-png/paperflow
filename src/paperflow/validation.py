@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import difflib
 import json
 import re
 import sys
@@ -13,9 +14,11 @@ from .commands import (
     find_project_root,
     git,
     python_is_venv,
+    relpath,
     run_command,
 )
-from .config import CONFIG_FILE, LOCAL_CONFIG_FILE, load_config
+from .config import CONFIG_FILE, LOCAL_CONFIG_FILE, PaperflowConfig, load_config
+from .sources import custom_style_requests, rendered_sources
 
 ABSOLUTE_WINDOWS_RE = re.compile(rb"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^<>\"]+")
 ABSOLUTE_POSIX_RE = re.compile(rb"(?<![A-Za-z]):?/(Users|home|tmp|var|mnt)/[^<>\"]+")
@@ -158,6 +161,62 @@ def docx_revision_counts(path: Path) -> tuple[int, int]:
     return insertions, deletions
 
 
+def _custom_style_check(config: PaperflowConfig) -> DoctorCheck:
+    """Verify that every Word style the manuscript requests exists in the reference.
+
+    A misspelled name renders as unstyled text without any warning, and swapping the
+    reference for another publisher's template breaks every mapping just as quietly.
+    """
+    from .template import reference_docx_styles
+
+    reference = config.word.reference_docx
+    assert reference is not None
+    try:
+        available = {style.name for style in reference_docx_styles(reference)}
+    except PaperflowError as exc:
+        return DoctorCheck(
+            "word.custom_styles",
+            "manuscript styles in reference",
+            False,
+            str(exc),
+            exc.remediation,
+            error_code=exc.code,
+        )
+
+    requests = custom_style_requests(rendered_sources(config.project.manuscript))
+    missing = [request for request in requests if request.name not in available]
+    if not missing:
+        detail = (
+            f"{len({request.name for request in requests})} requested style(s) exist"
+            if requests
+            else "no styles requested"
+        )
+        return DoctorCheck("word.custom_styles", "manuscript styles in reference", True, detail)
+
+    reported: list[str] = []
+    remediation: list[str] = []
+    for request in missing:
+        location = f"{relpath(request.source, config.root)}:{request.line}"
+        reported.append(f"{request.name!r} at {location}")
+        closest = difflib.get_close_matches(request.name, available, n=1, cutoff=0.6)
+        if closest:
+            remediation.append(f"Did you mean {closest[0]!r}? Used at {location}.")
+    remediation.append(
+        "Run uv run paperflow template-styles to list the names the reference defines."
+    )
+    remediation.append(
+        "Correct the custom-style name, or add the style to the reference document."
+    )
+    return DoctorCheck(
+        "word.custom_styles",
+        "manuscript styles in reference",
+        False,
+        "not defined in the reference: " + "; ".join(reported),
+        tuple(remediation),
+        error_code="word.custom_style_missing",
+    )
+
+
 def doctor(*, allow_missing_tools: bool = False, output_format: str = "text") -> int:
     root = find_project_root()
     checks: list[DoctorCheck] = []
@@ -279,6 +338,7 @@ def doctor(*, allow_missing_tools: bool = False, output_format: str = "text") ->
                     )
                 )
                 if reference.valid:
+                    checks.append(_custom_style_check(config))
                     checks.append(
                         DoctorCheck(
                             "word.reference.paths",

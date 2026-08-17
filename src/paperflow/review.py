@@ -21,6 +21,7 @@ from .commands import (
 from .config import PaperflowConfig, load_config
 from .manifest import command_version, git_commit, read_manifest, sha256_file, write_manifest
 from .rendering import render_qmd_to_docx
+from .sources import included_sources
 from .validation import docx_core_files_present, docx_revision_counts
 
 
@@ -105,23 +106,10 @@ def qmd_to_markdown(qmd: Path, output: Path, *, root: Path) -> None:
     )
 
 
-INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(.+?)\s*>\}\}")
-
-
 @dataclass(frozen=True)
 class WordBaselinePromotion:
     outputs: dict[str, Path]
     unreferenced: tuple[Path, ...]
-
-
-def included_sources(text: str, qmd: Path) -> tuple[Path, ...]:
-    """Return the existing files that the QMD pulls in with Quarto include shortcodes."""
-    included: list[Path] = []
-    for match in INCLUDE_RE.finditer(text):
-        target = (qmd.parent / match.group(1).strip().strip("\"'")).resolve()
-        if target.is_file() and target not in included:
-            included.append(target)
-    return tuple(included)
 
 
 def split_qmd_frontmatter(text: str) -> tuple[str, str]:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -78,6 +79,85 @@ def test_doctor_text_explains_how_to_restore_missing_sources(
     assert "[FAIL] manuscript source" in output
     assert "Fix: Create the configured manuscript file" in output
     assert "[FAIL] formatting rules" in output
+
+
+STYLES_XML = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    b'<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    b'<w:style w:type="paragraph" w:styleId="FrontiersAuthor">'
+    b'<w:name w:val="Frontiers Author"/></w:style>'
+    b'<w:style w:type="paragraph" w:styleId="FrontiersKeywords">'
+    b'<w:name w:val="Frontiers Keywords"/></w:style>'
+    b"</w:styles>"
+)
+
+
+def reference_project(tmp_path: Path, front_matter: str) -> None:
+    """A project with a reference DOCX that defines two publisher styles."""
+    reference = tmp_path / "templates" / "reference.local.docx"
+    reference.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(reference, "w") as archive:
+        archive.writestr("[Content_Types].xml", b"<Types/>")
+        archive.writestr("_rels/.rels", b"<Relationships/>")
+        archive.writestr("word/document.xml", b'<w:document xmlns:w="w"><w:body/></w:document>')
+        archive.writestr("word/styles.xml", STYLES_XML)
+    (tmp_path / "paperflow.yml").write_text(
+        "schema_version: 1\nword:\n  reference_docx: templates/reference.local.docx\n",
+        encoding="utf-8",
+    )
+    manuscript = tmp_path / "manuscript"
+    manuscript.mkdir(exist_ok=True)
+    (manuscript / "manuscript_formatting_rules.md").write_text("Rules\n", encoding="utf-8")
+    (manuscript / "index.qmd").write_text(
+        "---\ntitle: T\n---\n\n{{< include sections/front-matter.md >}}\n",
+        encoding="utf-8",
+    )
+    sections = manuscript / "sections"
+    sections.mkdir(exist_ok=True)
+    (sections / "front-matter.md").write_text(front_matter, encoding="utf-8")
+
+
+def test_doctor_accepts_styles_the_reference_defines(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    configure_doctor_environment(monkeypatch, tmp_path)
+    reference_project(
+        tmp_path,
+        '::: {custom-style="Frontiers Author"}\nFirst Author\n:::\n'
+        '\n::: {custom-style="Frontiers Keywords"}\nKeywords: a, b\n:::\n',
+    )
+
+    validation.doctor(output_format="json")
+
+    report = json.loads(capsys.readouterr().out)
+    check = next(item for item in report["checks"] if item["id"] == "word.custom_styles")
+    assert check["status"] == "ok"
+    assert check["detail"] == "2 requested style(s) exist"
+
+
+def test_doctor_reports_a_misspelled_style_with_the_nearest_name(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    configure_doctor_environment(monkeypatch, tmp_path)
+    reference_project(
+        tmp_path,
+        '::: {custom-style="Frontiers Authour"}\nFirst Author\n:::\n',
+    )
+
+    assert validation.doctor(output_format="json") == 1
+
+    report = json.loads(capsys.readouterr().out)
+    check = next(item for item in report["checks"] if item["id"] == "word.custom_styles")
+    assert check["status"] == "fail"
+    assert check["error_code"] == "word.custom_style_missing"
+    assert "'Frontiers Authour'" in check["detail"]
+    assert "manuscript/sections/front-matter.md:1" in check["detail"]
+    assert "Did you mean 'Frontiers Author'?" in check["remediation"][0]
+    assert "template-styles" in " ".join(check["remediation"])
 
 
 def test_doctor_names_the_environment_that_is_active_instead(

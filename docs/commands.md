@@ -16,7 +16,7 @@ they always resolve from the repository root.
 
 | Command | Purpose |
 | --- | --- |
-| `paperflow doctor` | Validate configuration, sources, reference DOCX, environment, external tools, Git, Quarto, Pandoc, and required Python packages. |
+| `paperflow doctor` | Validate configuration, sources, reference DOCX, the Word styles the manuscript requests, environment, external tools, Git, Quarto, Pandoc, and required Python packages. |
 | `paperflow doctor --format json` | Emit the same checks as schema-versioned JSON with stable IDs, error codes, and ordered remediation steps for agents and other tools. |
 | `paperflow doctor --allow-missing-tools` | Print all Doctor results but return success even when checks fail. Intended only for diagnostics. |
 | `paperflow config-show` | Print the effective merge of defaults, `paperflow.yml`, and `.paperflow.local.yml`. The output can contain private machine paths. |
