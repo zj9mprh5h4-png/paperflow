@@ -50,6 +50,34 @@ def test_render_finds_quarto_output_in_project_output_directory(
     assert calls[0][metadata + 1] == "lang:en"
 
 
+def test_render_refuses_before_quarto_when_an_include_is_missing(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(rendering, "require_tool", lambda *args, **kwargs: "quarto")
+    source = tmp_path / "manuscript" / "index.qmd"
+    source.parent.mkdir()
+    (source.parent / "sections").mkdir()
+    (source.parent / "sections" / "present.md").write_text("Body\n", encoding="utf-8")
+    source.write_text(
+        "---\ntitle: T\n---\n\n"
+        "{{< include sections/present.md >}}\n"
+        "{{< include sections/deleted.md >}}\n",
+        encoding="utf-8",
+    )
+    config = load_config(tmp_path)
+
+    # Quarto reports this as an uncaught JavaScript error with a stack trace, so the
+    # check has to happen before the renderer is ever called.
+    with pytest.raises(PaperflowError, match="includes files that do not exist") as error:
+        rendering.stage_qmd_to_docx(source, tmp_path / "build" / "paper.docx", config=config)
+
+    assert error.value.code == "render.missing_include"
+    assert "manuscript/sections/deleted.md" in str(error.value)
+    assert "manuscript/sections/present.md" not in str(error.value)
+    assert "sections-sync" in " ".join(error.value.remediation)
+
+
 def test_invalid_render_does_not_replace_previous_output(
     tmp_path: Path,
     monkeypatch,

@@ -110,6 +110,9 @@ sources as a side effect of rendering — and Doctor reports drift in either dir
 file nobody includes, or an include pointing at a file that is gone. Removing the markers opts out
 and returns the list to manual care.
 
+`paperflow build` and `paperflow render` refuse outright when an include points at a missing file,
+before Quarto is called, and name the file together with the command that repairs the list.
+
 If the manuscript already exists as a Word document, do not retype it. Follow the
 [Word-migration guide](word-migration.md) instead, which derives Markdown from the DOCX, compares
 it with the current source, and promotes it only after an explicit confirmation.

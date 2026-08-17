@@ -61,6 +61,33 @@ def include_targets(text: str, qmd: Path) -> tuple[Path, ...]:
     return tuple(targets)
 
 
+def missing_includes(entry: Path) -> tuple[Path, ...]:
+    """Return every include target that does not exist, following includes transitively.
+
+    Quarto reports this as an uncaught JavaScript error with a stack trace. Paperflow
+    knows the failure precisely, so it is worth catching before the renderer is called.
+    """
+    missing: list[Path] = []
+    seen: set[Path] = set()
+    pending = [entry.resolve()]
+    while pending:
+        current = pending.pop(0)
+        if current in seen:
+            continue
+        seen.add(current)
+        try:
+            text = current.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for target in include_targets(text, current):
+            if not target.is_file():
+                if target not in missing:
+                    missing.append(target)
+            elif target not in seen:
+                pending.append(target)
+    return tuple(missing)
+
+
 def section_files(directory: Path) -> tuple[Path, ...]:
     """Return the Markdown section files in document order, which is filename order."""
     if not directory.is_dir():
