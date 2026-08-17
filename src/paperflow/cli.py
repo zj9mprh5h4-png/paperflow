@@ -20,7 +20,11 @@ from .review import (
     render_docx,
     start_review,
 )
-from .template import reference_docx_styles, sanitise_reference_docx
+from .template import (
+    extract_front_matter,
+    reference_docx_styles,
+    sanitise_reference_docx,
+)
 from .validation import doctor
 from .workflow import build_project
 
@@ -119,6 +123,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Also list styles Word marks as hidden, which templates rarely intend for use.",
     )
 
+    front_matter = subparsers.add_parser(
+        "template-front-matter",
+        help="Turn a template's body text into Markdown that requests the same styles.",
+    )
+    front_matter.add_argument(
+        "--docx",
+        type=Path,
+        help="Template to read. Defaults to the configured word.reference_docx.",
+    )
+    front_matter.add_argument(
+        "--out",
+        type=Path,
+        help="Write the Markdown to a file instead of standard output.",
+    )
+    front_matter.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing --out file.",
+    )
+
     start = subparsers.add_parser("review-start", help="Create a Word review round.")
     start.add_argument("--round", required=True, type=int, dest="round_number")
     start.add_argument("--reviewer", required=True, help="Stable reviewer identifier.")
@@ -180,6 +204,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Also remove archived DOCX versions (requires --yes).",
     )
     return parser
+
+
+def _reference_source(explicit: Path | None, code: str) -> Path:
+    """Resolve the template to inspect: an explicit --docx, else the configured reference."""
+    if explicit is not None:
+        return resolve_input_path(explicit)
+    configured = load_config().word.reference_docx
+    if configured is None:
+        raise PaperflowError(
+            "No Word reference document is configured.",
+            code=code,
+            remediation=(
+                "Pass --docx with the template to use.",
+                "Or configure one with uv run paperflow init-local "
+                "--reference-docx <path> --force.",
+            ),
+        )
+    return configured
 
 
 def clean_build(*, yes: bool, include_archive: bool = False) -> int:
@@ -288,18 +330,7 @@ def main(argv: list[str] | None = None) -> int:
             print("next: uv run paperflow doctor")
             return 0
         if args.command == "template-styles":
-            configured = load_config().word.reference_docx
-            if args.docx is None and configured is None:
-                raise PaperflowError(
-                    "No Word reference document is configured.",
-                    code="template_styles.not_configured",
-                    remediation=(
-                        "Pass --docx with the template to inspect.",
-                        "Or configure one with uv run paperflow init-local "
-                        "--reference-docx <path> --force.",
-                    ),
-                )
-            source = resolve_input_path(args.docx) if args.docx is not None else configured
+            source = _reference_source(args.docx, "template_styles.not_configured")
             found = reference_docx_styles(source)
             visible = [style for style in found if args.show_all or not style.hidden]
             print(f"reference: {source}")
@@ -330,6 +361,42 @@ def main(argv: list[str] | None = None) -> int:
                 '[text]{custom-style="Name"} inline.'
             )
             print("See docs/word-template.md for worked examples.")
+            return 0
+        if args.command == "template-front-matter":
+            source = _reference_source(args.docx, "template_front_matter.not_configured")
+            extracted = extract_front_matter(source)
+            if not extracted.markdown:
+                raise PaperflowError(
+                    f"The body of {source.name} holds no text to convert.",
+                    code="template_front_matter.empty",
+                    remediation=(
+                        "Confirm the template really carries an author block or other "
+                        "boilerplate; a styles-only reference document has nothing to extract.",
+                    ),
+                )
+            if args.out is not None:
+                target = resolve_input_path(args.out)
+                if target.exists() and not args.force:
+                    raise PaperflowError(
+                        f"Front matter file already exists: {target}",
+                        code="template_front_matter.target_exists",
+                        remediation=(
+                            "Rerun with --force to replace it, or choose a different --out path.",
+                        ),
+                    )
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(extracted.markdown, encoding="utf-8")
+                print(f"front_matter: {target}")
+            else:
+                print(extracted.markdown, end="")
+            notes = [f"styles requested: {', '.join(extracted.styles) or 'none'}"]
+            if extracted.skipped_tables:
+                notes.append(f"skipped {extracted.skipped_tables} table(s)")
+            if extracted.skipped_drawings:
+                notes.append(f"skipped image(s) in {extracted.skipped_drawings} paragraph(s)")
+            notes.append("review the result: it is the template's placeholder text, not yours")
+            for note in notes:
+                print(f"note: {note}", file=sys.stderr)
             return 0
         if args.command == "review-start":
             outgoing = start_review(

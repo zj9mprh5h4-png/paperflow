@@ -27,6 +27,8 @@ they always resolve from the repository root.
 | `paperflow sanitize-template ... --out PATH --force` | Choose a different destination, and replace an existing one. |
 | `paperflow template-styles` | List the paragraph and character styles of the configured reference document, split into the ones Pandoc applies on its own and the ones available through `custom-style`. Names are printed exactly as they must be written. |
 | `paperflow template-styles --docx FILE --all` | Inspect a template that is not configured yet, and include styles Word marks as hidden. |
+| `paperflow template-front-matter` | Convert the body text of the reference document into Markdown that requests the same styles, so a publisher's author block becomes manuscript sources instead of being discarded. Prints to standard output; notes about skipped tables and images go to standard error. |
+| `paperflow template-front-matter --out PATH --force` | Write the Markdown to a file, replacing an existing one. |
 | `paperflow render` | Render only the configured manuscript DOCX. |
 | `paperflow open-items` | Scan configured sources and create the separate OPEN-items Markdown and DOCX reports. |
 | `paperflow build` | Render the manuscript and, when enabled, both OPEN-items reports. |

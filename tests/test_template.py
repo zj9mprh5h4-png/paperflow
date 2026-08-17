@@ -6,7 +6,11 @@ from pathlib import Path
 import pytest
 
 from paperflow.commands import PaperflowError
-from paperflow.template import reference_docx_styles, sanitise_reference_docx
+from paperflow.template import (
+    extract_front_matter,
+    reference_docx_styles,
+    sanitise_reference_docx,
+)
 from paperflow.validation import docx_reference_status
 
 STYLES = (
@@ -14,6 +18,8 @@ STYLES = (
     b'<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
     b'<w:style w:type="paragraph" w:styleId="Author"><w:name w:val="Author"/></w:style>'
     b'<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/></w:style>'
+    b'<w:style w:type="paragraph" w:styleId="FrontiersAuthor">'
+    b'<w:name w:val="Frontiers Author"/></w:style>'
     b'<w:style w:type="paragraph" w:styleId="FrontiersAffiliation">'
     b'<w:name w:val="Frontiers Affiliation"/></w:style>'
     b'<w:style w:type="character" w:styleId="FrontiersMarker">'
@@ -231,6 +237,73 @@ def test_template_styles_separates_pandoc_styles_from_custom_style_names(
     assert not styles["Frontiers Affiliation"].hidden
     # Table styles cannot be requested with custom-style and are left out.
     assert "Table Grid" not in styles
+
+
+BODY = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    b"<w:body>"
+    b'<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>'
+    b"<w:r><w:t>Article Title</w:t></w:r></w:p>"
+    b'<w:p><w:pPr><w:pStyle w:val="FrontiersAuthor"/></w:pPr>'
+    b"<w:r><w:t>First Author</w:t></w:r>"
+    b'<w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>1</w:t></w:r>'
+    b"<w:r><w:t>, Second Author</w:t></w:r>"
+    b'<w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>2</w:t></w:r>'
+    b"<w:r><w:t>*</w:t></w:r></w:p>"
+    b'<w:p><w:pPr><w:pStyle w:val="FrontiersAffiliation"/></w:pPr>'
+    b"<w:r><w:t>Laboratory X</w:t></w:r><w:r><w:br/><w:t>City X</w:t></w:r></w:p>"
+    b'<w:p><w:pPr><w:pStyle w:val="Normal"/></w:pPr>'
+    b"<w:r><w:t>Plain paragraph</w:t></w:r></w:p>"
+    b"<w:p></w:p>"
+    b'<w:p><w:r><w:drawing/></w:r><w:r><w:t>Logo caption</w:t></w:r></w:p>'
+    b"<w:tbl><w:tr><w:tc><w:p><w:r><w:t>cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+    b"</w:body></w:document>"
+)
+
+
+def template_with_body(path: Path) -> None:
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("[Content_Types].xml", b"<Types/>")
+        archive.writestr("_rels/.rels", b"<Relationships/>")
+        archive.writestr("word/document.xml", BODY)
+        archive.writestr("word/styles.xml", STYLES)
+
+
+def test_front_matter_extraction_reproduces_styles_and_superscripts(tmp_path: Path) -> None:
+    docx = tmp_path / "journal.docx"
+    template_with_body(docx)
+
+    extracted = extract_front_matter(docx)
+
+    assert extracted.markdown == (
+        "# Article Title\n"
+        "\n"
+        '::: {custom-style="Frontiers Author"}\n'
+        "First Author^1^, Second Author^2^\\*\n"
+        ":::\n"
+        "\n"
+        '::: {custom-style="Frontiers Affiliation"}\n'
+        "Laboratory X\n"
+        "City X\n"
+        ":::\n"
+        "\n"
+        "Plain paragraph\n"
+        "\n"
+        "Logo caption\n"
+    )
+    assert extracted.styles == ("Frontiers Author", "Frontiers Affiliation")
+    assert extracted.skipped_tables == 1
+    assert extracted.skipped_drawings == 1
+
+
+def test_front_matter_extraction_rejects_a_styles_only_reference(tmp_path: Path) -> None:
+    docx = tmp_path / "journal.docx"
+    publisher_template(docx)
+    with zipfile.ZipFile(docx, "a") as archive:
+        archive.writestr("word/styles.xml", STYLES)
+
+    assert extract_front_matter(docx).markdown == ""
 
 
 def test_template_styles_rejects_a_missing_reference(tmp_path: Path) -> None:

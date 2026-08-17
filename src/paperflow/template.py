@@ -228,6 +228,132 @@ def _sanitise_members(members: dict[str, bytes]) -> list[str]:
     return removed
 
 
+DOCUMENT_MEMBER = "word/document.xml"
+# Styles that carry no formatting worth requesting; their paragraphs become plain text.
+PLAIN_STYLES = frozenset({"Normal", "Body Text", "First Paragraph", "Compact"})
+HEADING_RE = re.compile(r"^heading (\d)$", re.IGNORECASE)
+MARKDOWN_ESCAPES = {character: f"\\{character}" for character in "\\`*_[]<>^~"}
+
+
+@dataclass(frozen=True)
+class ExtractedFrontMatter:
+    markdown: str
+    styles: tuple[str, ...]
+    skipped_tables: int
+    skipped_drawings: int
+
+
+def _style_names(root: ElementTree.Element) -> dict[str, str]:
+    names: dict[str, str] = {}
+    for style in root.findall(f"{{{WORD_NAMESPACE}}}style"):
+        style_id = style.get(f"{{{WORD_NAMESPACE}}}styleId")
+        name = style.find(f"{{{WORD_NAMESPACE}}}name")
+        value = name.get(f"{{{WORD_NAMESPACE}}}val") if name is not None else None
+        if style_id and value:
+            names[style_id] = value
+    return names
+
+
+def _run_text(run: ElementTree.Element) -> str:
+    pieces: list[str] = []
+    for child in run:
+        tag = child.tag.removeprefix(f"{{{WORD_NAMESPACE}}}")
+        if tag == "t":
+            pieces.append((child.text or "").translate(str.maketrans(MARKDOWN_ESCAPES)))
+        elif tag == "tab":
+            pieces.append(" ")
+        elif tag == "br":
+            pieces.append("\n")
+    text = "".join(pieces)
+    if not text:
+        return ""
+    properties = run.find(f"{{{WORD_NAMESPACE}}}rPr")
+    alignment = (
+        properties.find(f"{{{WORD_NAMESPACE}}}vertAlign") if properties is not None else None
+    )
+    value = alignment.get(f"{{{WORD_NAMESPACE}}}val") if alignment is not None else None
+    if value == "superscript":
+        return f"^{text}^"
+    if value == "subscript":
+        return f"~{text}~"
+    return text
+
+
+def _paragraph_style(paragraph: ElementTree.Element, names: dict[str, str]) -> str | None:
+    properties = paragraph.find(f"{{{WORD_NAMESPACE}}}pPr")
+    if properties is None:
+        return None
+    style = properties.find(f"{{{WORD_NAMESPACE}}}pStyle")
+    identifier = style.get(f"{{{WORD_NAMESPACE}}}val") if style is not None else None
+    return names.get(identifier, identifier) if identifier else None
+
+
+def extract_front_matter(path: Path) -> ExtractedFrontMatter:
+    """Turn the body of a Word template into Markdown that requests the same styles.
+
+    A reference document's body text is discarded during rendering, so a publisher's
+    author block, affiliations, and keyword lines never reach an output document. This
+    converts that boilerplate into manuscript sources instead of throwing it away.
+    """
+    if not path.is_file():
+        raise PaperflowError(
+            f"Word reference document does not exist: {path}",
+            code="template_front_matter.missing",
+            remediation=(
+                "Pass --docx with the template to read, or configure word.reference_docx.",
+            ),
+        )
+    try:
+        with zipfile.ZipFile(path) as archive:
+            document = ElementTree.fromstring(archive.read(DOCUMENT_MEMBER))
+            styles = ElementTree.fromstring(archive.read(STYLES_MEMBER))
+    except (OSError, KeyError, zipfile.BadZipFile, ElementTree.ParseError) as exc:
+        raise PaperflowError(
+            f"Could not read the body of {path}",
+            code="template_front_matter.unreadable",
+            remediation=(
+                "Confirm the file is a valid DOCX; a .dotx or .dot must be saved as .docx.",
+            ),
+        ) from exc
+
+    names = _style_names(styles)
+    body = document.find(f"{{{WORD_NAMESPACE}}}body")
+    blocks: list[str] = []
+    used: list[str] = []
+    tables = 0
+    drawings = 0
+    for element in list(body) if body is not None else []:
+        tag = element.tag.removeprefix(f"{{{WORD_NAMESPACE}}}")
+        if tag == "tbl":
+            tables += 1
+            continue
+        if tag != "p":
+            continue
+        if element.find(f".//{{{WORD_NAMESPACE}}}drawing") is not None:
+            drawings += 1
+        text = "".join(
+            _run_text(run) for run in element.findall(f"{{{WORD_NAMESPACE}}}r")
+        ).strip()
+        if not text:
+            continue
+        style = _paragraph_style(element, names)
+        heading = HEADING_RE.match(style) if style else None
+        if heading:
+            blocks.append(f"{'#' * int(heading.group(1))} {text}")
+        elif style is None or style in PLAIN_STYLES:
+            blocks.append(text)
+        else:
+            if style not in used:
+                used.append(style)
+            blocks.append(f'::: {{custom-style="{style}"}}\n{text}\n:::')
+    return ExtractedFrontMatter(
+        markdown="\n\n".join(blocks) + "\n" if blocks else "",
+        styles=tuple(used),
+        skipped_tables=tables,
+        skipped_drawings=drawings,
+    )
+
+
 def sanitise_reference_docx(
     *,
     source: Path,
