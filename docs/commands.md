@@ -25,6 +25,8 @@ they always resolve from the repository root.
 | `paperflow init-local --reference-docx PATH` | Additionally record a local Word reference DOCX in the generated file. |
 | `paperflow sanitize-template --docx FILE` | Write a repaired copy of a Word template to `templates/reference.local.docx`, removing the attached document template, hyperlink base, company and manager entries, clearing the author and last-modified-by names, and stripping file paths out of image alternative text. The source file is never modified and styles, layout, headers, and footers stay byte-identical. Reports what it removed and what it could not repair. |
 | `paperflow sanitize-template ... --out PATH --force` | Choose a different destination, and replace an existing one. |
+| `paperflow template-styles` | List the paragraph and character styles of the configured reference document, split into the ones Pandoc applies on its own and the ones available through `custom-style`. Names are printed exactly as they must be written. |
+| `paperflow template-styles --docx FILE --all` | Inspect a template that is not configured yet, and include styles Word marks as hidden. |
 | `paperflow render` | Render only the configured manuscript DOCX. |
 | `paperflow open-items` | Scan configured sources and create the separate OPEN-items Markdown and DOCX reports. |
 | `paperflow build` | Render the manuscript and, when enabled, both OPEN-items reports. |

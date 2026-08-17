@@ -6,8 +6,23 @@ from pathlib import Path
 import pytest
 
 from paperflow.commands import PaperflowError
-from paperflow.template import sanitise_reference_docx
+from paperflow.template import reference_docx_styles, sanitise_reference_docx
 from paperflow.validation import docx_reference_status
+
+STYLES = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    b'<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    b'<w:style w:type="paragraph" w:styleId="Author"><w:name w:val="Author"/></w:style>'
+    b'<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/></w:style>'
+    b'<w:style w:type="paragraph" w:styleId="FrontiersAffiliation">'
+    b'<w:name w:val="Frontiers Affiliation"/></w:style>'
+    b'<w:style w:type="character" w:styleId="FrontiersMarker">'
+    b'<w:name w:val="Frontiers Marker"/></w:style>'
+    b'<w:style w:type="paragraph" w:styleId="LegacyThing">'
+    b'<w:name w:val="Legacy Thing"/><w:semiHidden/></w:style>'
+    b'<w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/></w:style>'
+    b"</w:styles>"
+)
 
 ATTACHED_TEMPLATE_RELS = (
     b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -193,6 +208,47 @@ def test_sanitize_rejects_a_file_that_is_not_a_docx(tmp_path: Path) -> None:
 
     assert error.value.code == "sanitize_template.source_invalid"
     assert "saved as .docx first" in " ".join(error.value.remediation)
+
+
+def test_template_styles_separates_pandoc_styles_from_custom_style_names(
+    tmp_path: Path,
+) -> None:
+    docx = tmp_path / "journal.docx"
+    publisher_template(docx)
+    with zipfile.ZipFile(docx, "a") as archive:
+        archive.writestr("word/styles.xml", STYLES)
+
+    styles = {style.name: style for style in reference_docx_styles(docx)}
+
+    assert styles["Author"].applied_by_pandoc
+    assert styles["Author"].kind == "paragraph"
+    # Word stores the built-in heading under a lower-case name; it is not a custom style,
+    # but Paperflow reports the name as written so it can be used verbatim.
+    assert not styles["heading 1"].applied_by_pandoc
+    assert not styles["Frontiers Affiliation"].applied_by_pandoc
+    assert styles["Frontiers Marker"].kind == "character"
+    assert styles["Legacy Thing"].hidden
+    assert not styles["Frontiers Affiliation"].hidden
+    # Table styles cannot be requested with custom-style and are left out.
+    assert "Table Grid" not in styles
+
+
+def test_template_styles_rejects_a_missing_reference(tmp_path: Path) -> None:
+    with pytest.raises(PaperflowError, match="does not exist") as error:
+        reference_docx_styles(tmp_path / "absent.docx")
+
+    assert error.value.code == "template_styles.missing"
+
+
+def test_template_styles_rejects_a_file_without_styles(tmp_path: Path) -> None:
+    docx = tmp_path / "journal.docx"
+    publisher_template(docx)
+
+    with pytest.raises(PaperflowError, match="Could not read the styles") as error:
+        reference_docx_styles(docx)
+
+    assert error.value.code == "template_styles.unreadable"
+    assert "saved as .docx" in " ".join(error.value.remediation)
 
 
 def test_sanitize_rejects_a_missing_file(tmp_path: Path) -> None:

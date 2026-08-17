@@ -152,6 +152,83 @@ The same reference formats `build/paper_current.docx` and `build/open_items_curr
 `word.reject_absolute_paths: true`, a generated DOCX containing a detected local path is rejected
 without replacing an existing valid output.
 
+## Map manuscript content onto template styles
+
+A reference document contributes styles, headers, footers, and page geometry. It does **not**
+contribute text. Whatever stands in the body of a publisher template — the author block, the
+affiliation lines, the correspondence and keyword paragraphs — is discarded during rendering and
+never reaches a generated document. That is deliberate: otherwise every build would carry the
+template's placeholder authors.
+
+Such content therefore belongs in the manuscript sources, where it is version-controlled,
+diffable, and reviewable like the rest of the text. It still gets the publisher's formatting,
+because a Markdown block can request a named Word style.
+
+### What happens without any explicit mapping
+
+Pandoc applies a fixed set of styles on its own when the reference defines them: `Title`,
+`Subtitle`, `Author`, `Date`, `Abstract`, `Abstract Title`, `Heading 1` to `Heading 9`,
+`Body Text`, `Caption`, `Bibliography`, and a few more.
+
+Structured author metadata in the QMD front matter reaches a DOCX only in part. Rendering a
+document with `author`, `affiliations`, `email`, `corresponding`, and `keywords` produces exactly
+this:
+
+| Style in the output | Content |
+| --- | --- |
+| `Title` | the title |
+| `Author` | the author names, one paragraph each |
+| `Abstract Title`, `Abstract` | the abstract |
+
+Affiliations, e-mail addresses, the corresponding-author flag, and keywords are dropped. Do not
+rely on structured metadata for publisher front matter; use the explicit mapping below.
+
+### Find the style names
+
+```bash
+uv run paperflow template-styles
+```
+
+The command lists the paragraph and character styles of the configured reference document, split
+into the ones Pandoc applies on its own and the ones available for an explicit request. Use
+`--docx` to inspect a template that is not configured yet, and `--all` to include styles Word
+marks as hidden. Names must be used exactly as printed, including capitalisation.
+
+### Request a style
+
+A `custom-style` div formats whole paragraphs, a span formats text inside a paragraph:
+
+```markdown
+::: {custom-style="Frontiers Author"}
+First Author^1^, Second Author^2^\*, Third Author^1,2^
+:::
+
+::: {custom-style="Frontiers Affiliation"}
+^1^Laboratory X, Institute X, Department X, Organization X, City X, Country
+:::
+
+::: {custom-style="Frontiers Correspondence"}
+\* Correspondence:
+Corresponding Author
+email@uni.edu
+:::
+
+::: {custom-style="Frontiers Keywords"}
+Keywords: keyword1, keyword2, keyword3, keyword4, keyword5
+:::
+```
+
+`^1^` produces a superscript marker, and `\*` escapes an asterisk that would otherwise start
+emphasis. The neutral example uses the same mechanism in
+`manuscript/sections/front-matter.md` for `Title` and `Author`.
+
+### Documents that need none of this
+
+Nothing in Paperflow requires an author block. A report, a thesis chapter, or an internal note can
+delete `manuscript/sections/front-matter.md` and remove its include from `manuscript/index.qmd`.
+Paperflow has no opinion about which front matter a document carries; it only renders what the
+sources contain.
+
 ## Manual template checklist
 
 Automated structural checks do not replace a deliberate Word inspection. Before relying on or

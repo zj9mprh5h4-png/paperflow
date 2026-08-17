@@ -129,6 +129,12 @@ start a new project, follow the [First manuscript guide](docs/first-manuscript.m
 [Word-template guide](docs/word-template.md) explains how to keep publisher or institutional DOCX
 templates local and validate them before use.
 
+A Word template supplies styles, headers, footers, and page geometry, never body text. Author
+blocks, affiliations, correspondence details, and keywords therefore live in the manuscript
+sources and request the publisher's formatting by name; `uv run paperflow template-styles` prints
+the names a template offers. See
+[Map manuscript content onto template styles](docs/word-template.md#map-manuscript-content-onto-template-styles).
+
 The [command reference](docs/commands.md) lists every CLI command, safety flag, output, and exit
 status.
 

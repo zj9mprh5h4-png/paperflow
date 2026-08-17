@@ -1,6 +1,6 @@
-"""Automatic repair of Word reference templates that carry machine-specific links.
+"""Inspection and automatic repair of Word reference templates.
 
-The edits below are byte-level on purpose. Re-serialising a Word part with
+The repair edits are byte-level on purpose. Re-serialising a Word part with
 ElementTree renames its namespace prefixes, and ``word/settings.xml`` carries an
 ``mc:Ignorable`` attribute that lists prefixes by name. Renaming them there produces a
 file Word refuses to open, so each part is edited in place instead of rewritten.
@@ -12,6 +12,7 @@ import re
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from xml.etree import ElementTree
 
 from .commands import PaperflowError
 from .docx_package import read_docx_members, write_docx_members
@@ -41,11 +42,101 @@ CREATOR_RE = re.compile(rb"<dc:creator>.*?</dc:creator>", re.DOTALL)
 LAST_MODIFIED_BY_RE = re.compile(rb"<cp:lastModifiedBy>.*?</cp:lastModifiedBy>", re.DOTALL)
 
 
+STYLES_MEMBER = "word/styles.xml"
+WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+# Style names the Pandoc DOCX writer applies on its own when the reference defines
+# them. Everything else has to be requested explicitly with a custom-style div or span.
+PANDOC_APPLIED_STYLES = frozenset(
+    {
+        "Title",
+        "Subtitle",
+        "Author",
+        "Date",
+        "Abstract",
+        "Abstract Title",
+        "Compact",
+        "Body Text",
+        "First Paragraph",
+        "Block Text",
+        "Source Code",
+        "Footnote Text",
+        "Definition Term",
+        "Definition",
+        "Caption",
+        "Table Caption",
+        "Image Caption",
+        "Figure",
+        "Captioned Figure",
+        "TOC Heading",
+        "Bibliography",
+        "Verbatim Char",
+        "Footnote Reference",
+        "Hyperlink",
+        "Section Number",
+        *(f"Heading {level}" for level in range(1, 10)),
+    }
+)
+
+
 @dataclass(frozen=True)
 class TemplateSanitisation:
     path: Path
     removed: tuple[str, ...]
     remaining: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TemplateStyle:
+    name: str
+    kind: str
+    applied_by_pandoc: bool
+    hidden: bool
+
+
+def reference_docx_styles(path: Path) -> tuple[TemplateStyle, ...]:
+    """List the paragraph and character styles a reference DOCX defines, by Word name."""
+    if not path.is_file():
+        raise PaperflowError(
+            f"Word reference document does not exist: {path}",
+            code="template_styles.missing",
+            remediation=(
+                "Pass --docx with the template to inspect, or configure word.reference_docx "
+                "with uv run paperflow init-local --reference-docx <path> --force.",
+            ),
+        )
+    try:
+        with zipfile.ZipFile(path) as archive:
+            xml = archive.read(STYLES_MEMBER)
+        root = ElementTree.fromstring(xml)
+    except (OSError, KeyError, zipfile.BadZipFile, ElementTree.ParseError) as exc:
+        raise PaperflowError(
+            f"Could not read the styles of {path}",
+            code="template_styles.unreadable",
+            remediation=(
+                "Confirm the file is a valid DOCX; a .dotx or .dot must be saved as .docx.",
+                "Run uv run paperflow doctor to check the configured reference document.",
+            ),
+        ) from exc
+
+    styles: list[TemplateStyle] = []
+    for style in root.findall(f"{{{WORD_NAMESPACE}}}style"):
+        kind = style.get(f"{{{WORD_NAMESPACE}}}type", "")
+        if kind not in {"paragraph", "character"}:
+            continue
+        name = style.find(f"{{{WORD_NAMESPACE}}}name")
+        value = name.get(f"{{{WORD_NAMESPACE}}}val") if name is not None else None
+        if not value:
+            continue
+        styles.append(
+            TemplateStyle(
+                name=value,
+                kind=kind,
+                applied_by_pandoc=value in PANDOC_APPLIED_STYLES,
+                hidden=style.find(f"{{{WORD_NAMESPACE}}}semiHidden") is not None,
+            )
+        )
+    return tuple(sorted(styles, key=lambda item: (item.kind, item.name.lower())))
 
 
 def _drop(members: dict[str, bytes], member: str, pattern: re.Pattern[bytes]) -> bool:
