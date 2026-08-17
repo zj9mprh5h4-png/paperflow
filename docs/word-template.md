@@ -194,6 +194,28 @@ into the ones Pandoc applies on its own and the ones available for an explicit r
 `--docx` to inspect a template that is not configured yet, and `--all` to include styles Word
 marks as hidden. Names must be used exactly as printed, including capitalisation.
 
+### Start from the template's own boilerplate
+
+The template already contains the block, correctly formatted. Instead of retyping it, convert it:
+
+```bash
+uv run paperflow template-front-matter --out manuscript/sections/front-matter.md --force
+```
+
+Every paragraph of the template body becomes Markdown that requests the same style, superscript
+runs become `^…^`, headings become `#` levels, and unstyled paragraphs stay plain text. Without
+`--out` the Markdown goes to standard output, so it can be inspected before anything is written.
+Notes about what was skipped go to standard error, which keeps redirected output clean:
+
+```text
+note: styles requested: Frontiers Author, Frontiers Affiliation
+note: skipped 1 table(s)
+note: review the result: it is the template's placeholder text, not yours
+```
+
+Tables and images are not converted. What you get is the publisher's placeholder text — "First
+Author", "Laboratory X", "keyword1" — as a starting point to overwrite, not as content to keep.
+
 ### Request a style
 
 A `custom-style` div formats whole paragraphs, a span formats text inside a paragraph:
