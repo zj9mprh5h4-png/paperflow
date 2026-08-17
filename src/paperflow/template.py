@@ -371,7 +371,11 @@ def _paragraph_text(paragraph: ElementTree.Element) -> str:
             rendered.append(f"~{text}~")
         else:
             rendered.append(text)
-    return "".join(rendered)
+    # A w:br is a line break inside a paragraph. Written as a plain newline it becomes a
+    # soft break, which Pandoc collapses into a space, so a correspondence block would
+    # arrive in Word as one run-on line. A trailing backslash forces a hard break and
+    # survives editors that trim trailing whitespace, which two spaces would not.
+    return "".join(rendered).strip().replace("\n", "\\\n")
 
 
 def _paragraph_style(paragraph: ElementTree.Element, names: dict[str, str]) -> str | None:

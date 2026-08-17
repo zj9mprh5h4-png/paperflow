@@ -286,7 +286,7 @@ def test_front_matter_extraction_reproduces_styles_and_superscripts(tmp_path: Pa
         ":::\n"
         "\n"
         '::: {custom-style="Frontiers Affiliation"}\n'
-        "Laboratory X\n"
+        "Laboratory X\\\n"
         "City X\n"
         ":::\n"
         "\n"
@@ -315,6 +315,42 @@ LINKED_BODY = (
     b"</w:p>"
     b"</w:body></w:document>"
 )
+
+
+BREAK_BODY = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    b"<w:body>"
+    b'<w:p><w:pPr><w:pStyle w:val="FrontiersAuthor"/></w:pPr>'
+    b"<w:r><w:t>* Correspondence: </w:t></w:r>"
+    b"<w:r><w:br/><w:t>Corresponding Author</w:t></w:r>"
+    b"<w:r><w:br/><w:t>email@uni.edu</w:t></w:r>"
+    b"<w:r><w:br/></w:r></w:p>"
+    b"</w:body></w:document>"
+)
+
+
+def test_line_breaks_become_hard_breaks_that_survive_rendering(tmp_path: Path) -> None:
+    docx = tmp_path / "journal.docx"
+    with zipfile.ZipFile(docx, "w") as archive:
+        archive.writestr("[Content_Types].xml", b"<Types/>")
+        archive.writestr("_rels/.rels", b"<Relationships/>")
+        archive.writestr("word/document.xml", BREAK_BODY)
+        archive.writestr("word/styles.xml", STYLES)
+
+    markdown = extract_template_body(docx).markdown
+
+    # A plain newline is a soft break, which Pandoc collapses into a space; the trailing
+    # backslash forces a real w:br in the rendered document.
+    assert markdown == (
+        '::: {custom-style="Frontiers Author"}\n'
+        "\\* Correspondence: \\\n"
+        "Corresponding Author\\\n"
+        "email@uni.edu\n"
+        ":::\n"
+    )
+    # A break at the very end of a paragraph must not leave a dangling backslash.
+    assert not markdown.replace(":::\n", "").rstrip().endswith("\\")
 
 
 def test_extraction_keeps_hyperlink_text_and_merges_adjacent_superscripts(
