@@ -222,6 +222,24 @@ Keywords: keyword1, keyword2, keyword3, keyword4, keyword5
 emphasis. The neutral example uses the same mechanism in
 `manuscript/sections/front-matter.md` for `Title` and `Author`.
 
+### Doctor checks the mapping
+
+A misspelled style name is not an error for Pandoc. It renders as unstyled text, silently, and
+swapping the reference for another publisher's template breaks every mapping just as quietly.
+Doctor therefore reads the manuscript entry point and everything it includes, collects the
+requested names, and compares them with the reference document:
+
+```text
+[FAIL] manuscript styles in reference: not defined in the reference:
+       'Frontiers Authour' at manuscript/sections/front-matter.md:1
+  Fix: Did you mean 'Frontiers Author'? Used at manuscript/sections/front-matter.md:1.
+  Fix: Run uv run paperflow template-styles to list the names the reference defines.
+  Fix: Correct the custom-style name, or add the style to the reference document.
+```
+
+The check runs only when a reference document is configured, because without one there is no
+template to check against.
+
 ### Documents that need none of this
 
 Nothing in Paperflow requires an author block. A report, a thesis chapter, or an internal note can
