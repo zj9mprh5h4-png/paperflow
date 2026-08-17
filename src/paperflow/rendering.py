@@ -7,6 +7,7 @@ from .commands import PaperflowError, relpath, require_tool, run_command
 from .config import PaperflowConfig
 from .docx_math import protect_docx_inline_math
 from .publication import publish_docx_outputs
+from .sources import missing_includes
 from .validation import (
     docx_absolute_path_locations,
     docx_core_files_present,
@@ -23,6 +24,18 @@ def stage_qmd_to_docx(
     require_tool("quarto", root=config.root)
     if not source.is_file():
         raise PaperflowError(f"QMD source does not exist: {source}")
+    absent = missing_includes(source)
+    if absent:
+        listed = ", ".join(relpath(path, config.root) for path in absent)
+        raise PaperflowError(
+            f"{relpath(source, config.root)} includes files that do not exist: {listed}",
+            code="render.missing_include",
+            remediation=(
+                "Run uv run paperflow sections-sync to rebuild the include list from the "
+                "section files.",
+                "Or restore the listed file, or remove its include line from the manuscript.",
+            ),
+        )
     if config.word.reference_docx is not None and not config.word.reference_docx.is_file():
         raise PaperflowError(
             f"Word reference document does not exist: {config.word.reference_docx}"
