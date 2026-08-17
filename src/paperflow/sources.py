@@ -9,6 +9,13 @@ from pathlib import Path
 INCLUDE_RE = re.compile(r"\{\{<\s*include\s+(.+?)\s*>\}\}")
 CUSTOM_STYLE_RE = re.compile(r"""custom-style=["']([^"']+)["']""")
 
+# The section files are the single source of truth for what a manuscript contains.
+# Paperflow regenerates the include list between these markers and nothing else, so
+# anything a user writes elsewhere in the entry point survives untouched. Removing the
+# markers opts out of the mechanism and returns the list to manual care.
+SECTIONS_BEGIN = "<!-- paperflow:sections -->"
+SECTIONS_END = "<!-- /paperflow:sections -->"
+
 
 @dataclass(frozen=True)
 class StyleRequest:
@@ -42,6 +49,59 @@ def rendered_sources(entry: Path) -> tuple[Path, ...]:
             continue
         pending.extend(path for path in included_sources(text, current) if path not in seen)
     return tuple(seen)
+
+
+def include_targets(text: str, qmd: Path) -> tuple[Path, ...]:
+    """Return every path a QMD asks for, whether or not the file exists."""
+    targets: list[Path] = []
+    for match in INCLUDE_RE.finditer(text):
+        target = (qmd.parent / match.group(1).strip().strip("\"'")).resolve()
+        if target not in targets:
+            targets.append(target)
+    return tuple(targets)
+
+
+def section_files(directory: Path) -> tuple[Path, ...]:
+    """Return the Markdown section files in document order, which is filename order."""
+    if not directory.is_dir():
+        return ()
+    return tuple(sorted(path for path in directory.glob("*.md") if path.is_file()))
+
+
+def find_section_block(text: str) -> tuple[int, int] | None:
+    """Return the line span Paperflow may rewrite, excluding the markers themselves."""
+    lines = text.splitlines()
+    begin = end = None
+    for number, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == SECTIONS_BEGIN and begin is None:
+            begin = number
+        elif stripped == SECTIONS_END and begin is not None:
+            end = number
+            break
+    if begin is None or end is None:
+        return None
+    return begin, end
+
+
+def render_section_block(manuscript: Path, files: tuple[Path, ...]) -> list[str]:
+    """Render one include line per section file, relative to the manuscript."""
+    return [
+        f"{{{{< include {path.relative_to(manuscript.parent).as_posix()} >}}}}"
+        for path in files
+    ]
+
+
+def replace_section_block(text: str, includes: list[str]) -> str | None:
+    """Rewrite only the lines between the markers, leaving the rest of the file alone."""
+    span = find_section_block(text)
+    if span is None:
+        return None
+    begin, end = span
+    lines = text.splitlines()
+    updated = lines[: begin + 1] + includes + lines[end:]
+    trailing = "\n" if text.endswith("\n") else ""
+    return "\n".join(updated) + trailing
 
 
 def custom_style_requests(paths: tuple[Path, ...]) -> tuple[StyleRequest, ...]:

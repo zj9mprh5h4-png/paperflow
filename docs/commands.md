@@ -30,6 +30,7 @@ they always resolve from the repository root.
 | `paperflow template-sections` | Convert the body text of the reference document into Markdown that requests the same styles, so a publisher's author block and article skeleton become manuscript sources instead of being discarded. Prints to standard output; notes about skipped tables and images go to standard error. |
 | `paperflow template-sections --split --force` | Write one file per top-level heading into `manuscript/sections/`, numbered in document order, with everything before the first heading in `00-front-matter.md`, and print the matching include lines. Refuses to replace existing files without `--force`. |
 | `paperflow template-sections --out PATH --force` | Write the whole body to a single file instead. |
+| `paperflow sections-sync` | Regenerate the include list in the manuscript from the files in `project.sections_dir`, in filename order. Only the lines between the `<!-- paperflow:sections -->` markers are rewritten; everything else in the entry point is left alone. Refuses when the markers are absent. |
 | `paperflow render` | Render only the configured manuscript DOCX. |
 | `paperflow open-items` | Scan configured sources and create the separate OPEN-items Markdown and DOCX reports. |
 | `paperflow build` | Render the manuscript and, when enabled, both OPEN-items reports. |

@@ -117,6 +117,66 @@ def reference_project(tmp_path: Path, front_matter: str) -> None:
     (sections / "front-matter.md").write_text(front_matter, encoding="utf-8")
 
 
+def test_doctor_reports_a_section_file_that_nobody_includes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    configure_doctor_environment(monkeypatch, tmp_path)
+    reference_project(tmp_path, "Body\n")
+    # Written, but the manuscript's include list never mentions it.
+    (tmp_path / "manuscript" / "sections" / "99-orphan.md").write_text(
+        "Forgotten section\n",
+        encoding="utf-8",
+    )
+
+    assert validation.doctor(output_format="json") == 1
+
+    report = json.loads(capsys.readouterr().out)
+    check = next(item for item in report["checks"] if item["id"] == "manuscript.sections")
+    assert check["status"] == "fail"
+    assert check["error_code"] == "manuscript.section_drift"
+    assert "manuscript/sections/99-orphan.md" in check["detail"]
+    assert "sections-sync" in " ".join(check["remediation"])
+
+
+def test_doctor_reports_an_include_pointing_at_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    configure_doctor_environment(monkeypatch, tmp_path)
+    reference_project(tmp_path, "Body\n")
+    (tmp_path / "manuscript" / "index.qmd").write_text(
+        "---\ntitle: T\n---\n\n"
+        "{{< include sections/front-matter.md >}}\n"
+        "{{< include sections/deleted.md >}}\n",
+        encoding="utf-8",
+    )
+
+    assert validation.doctor(output_format="json") == 1
+
+    report = json.loads(capsys.readouterr().out)
+    check = next(item for item in report["checks"] if item["id"] == "manuscript.sections")
+    assert "included but absent: manuscript/sections/deleted.md" in check["detail"]
+
+
+def test_doctor_accepts_a_manuscript_whose_includes_match_its_sections(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    configure_doctor_environment(monkeypatch, tmp_path)
+    reference_project(tmp_path, "Body\n")
+
+    validation.doctor(output_format="json")
+
+    report = json.loads(capsys.readouterr().out)
+    check = next(item for item in report["checks"] if item["id"] == "manuscript.sections")
+    assert check["status"] == "ok"
+    assert check["detail"] == "1 include(s) resolve, 1 section file(s) in use"
+
+
 def test_doctor_accepts_styles_the_reference_defines(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

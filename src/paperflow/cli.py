@@ -20,6 +20,13 @@ from .review import (
     render_docx,
     start_review,
 )
+from .sources import (
+    SECTIONS_BEGIN,
+    SECTIONS_END,
+    render_section_block,
+    replace_section_block,
+    section_files,
+)
 from .template import (
     extract_template_body,
     reference_docx_styles,
@@ -150,6 +157,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Replace existing output files.",
+    )
+
+    subparsers.add_parser(
+        "sections-sync",
+        help="Regenerate the include list in the manuscript from the section files.",
     )
 
     start = subparsers.add_parser("review-start", help="Create a Word review round.")
@@ -445,6 +457,35 @@ def main(argv: list[str] | None = None) -> int:
             )
             for note in notes:
                 print(f"note: {note}", file=sys.stderr)
+            return 0
+        if args.command == "sections-sync":
+            config = load_config()
+            manuscript = config.project.manuscript
+            text = manuscript.read_text(encoding="utf-8")
+            files = section_files(config.project.sections_dir)
+            includes = render_section_block(manuscript, files)
+            updated = replace_section_block(text, includes)
+            if updated is None:
+                raise PaperflowError(
+                    f"{relpath(manuscript, config.root)} has no Paperflow section block.",
+                    code="sections_sync.no_block",
+                    remediation=(
+                        f"Add the two marker lines {SECTIONS_BEGIN} and {SECTIONS_END} around "
+                        "the include list, then rerun.",
+                        "Without the markers the include list stays under manual care, which "
+                        "is a valid choice.",
+                    ),
+                )
+            if updated == text:
+                print(f"manuscript: {manuscript}")
+                print(f"sections: {len(files)} file(s), already in step")
+                return 0
+            manuscript.write_text(updated, encoding="utf-8")
+            print(f"manuscript: {manuscript}")
+            for line in includes:
+                print(f"include: {line}")
+            if not includes:
+                print("include: none; the section directory holds no Markdown files")
             return 0
         if args.command == "review-start":
             outgoing = start_review(

@@ -85,6 +85,7 @@ Integer configuration format version. The only supported value is `1`.
 | `name` | non-empty string | `paperflow-demo` | Human-readable project identifier used in the OPEN-items report. |
 | `language` | non-empty string | `en` | Passed to Quarto as the `lang` metadata value for manuscript and OPEN-items DOCX rendering. Use a valid language tag such as `en`, `de`, or `en-GB`. |
 | `manuscript` | project-relative path | `manuscript/index.qmd` | Authoritative QMD source rendered by `paperflow render` and `paperflow build`. Must remain inside the repository. |
+| `sections_dir` | project-relative directory | `manuscript/sections` | Holds the Markdown section files the manuscript includes. `paperflow sections-sync` regenerates the include list from this directory, and Doctor reports drift between the two. |
 | `formatting_rules` | project-relative path | `manuscript/manuscript_formatting_rules.md` | Version-controlled instructions for humans and AI assistants. Doctor verifies that the file exists; it is not rendered into the manuscript. |
 
 ### `paths`

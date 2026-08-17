@@ -225,7 +225,16 @@ keywords carry no heading of their own and would otherwise be lost.
 
 **Delete every section you do not need.** A journal template ships a full article skeleton with
 guidance text — "For full guidelines please refer to…", article-type notes, formatting advice.
-None of that belongs in a manuscript. Removing a file and its include line is all it takes.
+None of that belongs in a manuscript. Delete the files, then rebuild the include list:
+
+```bash
+uv run paperflow sections-sync
+```
+
+The section files are the single source of truth; the include list is derived from them. `--split`
+deliberately does not write that list itself, because the directory still holds whatever sections
+were there before and the result would be a wrong table of contents. Delete first, sync second, and
+Doctor reports any drift you miss.
 
 Without `--split` the whole body goes to standard output as one document, or to `--out` as a single
 file. Notes go to standard error, which keeps redirected Markdown clean.
