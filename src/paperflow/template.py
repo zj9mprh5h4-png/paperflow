@@ -235,12 +235,83 @@ HEADING_RE = re.compile(r"^heading (\d)$", re.IGNORECASE)
 MARKDOWN_ESCAPES = {character: f"\\{character}" for character in "\\`*_[]<>^~"}
 
 
+SLUG_RE = re.compile(r"[^a-z0-9]+")
+FRONT_MATTER_STEM = "00-front-matter"
+
+
 @dataclass(frozen=True)
-class ExtractedFrontMatter:
+class TemplateBlock:
     markdown: str
+    heading_level: int | None
+
+
+@dataclass(frozen=True)
+class TemplateSection:
+    filename: str
+    markdown: str
+
+
+@dataclass(frozen=True)
+class ExtractedTemplateBody:
+    blocks: tuple[TemplateBlock, ...]
     styles: tuple[str, ...]
     skipped_tables: int
     skipped_drawings: int
+
+    @property
+    def markdown(self) -> str:
+        return "\n\n".join(block.markdown for block in self.blocks) + "\n" if self.blocks else ""
+
+    @property
+    def top_level_headings(self) -> int:
+        return sum(1 for block in self.blocks if block.heading_level == 1)
+
+
+def _slug(text: str, taken: set[str]) -> str:
+    base = SLUG_RE.sub("-", text.lower()).strip("-")[:40].strip("-") or "section"
+    candidate = base
+    sequence = 2
+    while candidate in taken:
+        candidate = f"{base}-{sequence}"
+        sequence += 1
+    taken.add(candidate)
+    return candidate
+
+
+def template_sections(extracted: ExtractedTemplateBody) -> tuple[TemplateSection, ...]:
+    """Split the extracted body at every top-level heading into one file each.
+
+    Everything before the first heading is the front matter proper: title, authors,
+    affiliations, and keywords carry no heading of their own and would be lost otherwise.
+    """
+    front_matter: list[str] = []
+    groups: list[tuple[str, list[str]]] = []
+    taken: set[str] = set()
+    for block in extracted.blocks:
+        if block.heading_level == 1:
+            title = block.markdown.lstrip("#").strip()
+            groups.append((_slug(title, taken), [block.markdown]))
+        elif groups:
+            groups[-1][1].append(block.markdown)
+        else:
+            front_matter.append(block.markdown)
+
+    sections: list[TemplateSection] = []
+    if front_matter:
+        sections.append(
+            TemplateSection(
+                filename=f"{FRONT_MATTER_STEM}.md",
+                markdown="\n\n".join(front_matter) + "\n",
+            )
+        )
+    for index, (stem, blocks) in enumerate(groups, start=1):
+        sections.append(
+            TemplateSection(
+                filename=f"{index:02d}-{stem}.md",
+                markdown="\n\n".join(blocks) + "\n",
+            )
+        )
+    return tuple(sections)
 
 
 def _style_names(root: ElementTree.Element) -> dict[str, str]:
@@ -254,7 +325,7 @@ def _style_names(root: ElementTree.Element) -> dict[str, str]:
     return names
 
 
-def _run_text(run: ElementTree.Element) -> str:
+def _run_content(run: ElementTree.Element) -> str:
     pieces: list[str] = []
     for child in run:
         tag = child.tag.removeprefix(f"{{{WORD_NAMESPACE}}}")
@@ -264,19 +335,43 @@ def _run_text(run: ElementTree.Element) -> str:
             pieces.append(" ")
         elif tag == "br":
             pieces.append("\n")
-    text = "".join(pieces)
-    if not text:
-        return ""
+    return "".join(pieces)
+
+
+def _run_alignment(run: ElementTree.Element) -> str:
     properties = run.find(f"{{{WORD_NAMESPACE}}}rPr")
     alignment = (
         properties.find(f"{{{WORD_NAMESPACE}}}vertAlign") if properties is not None else None
     )
-    value = alignment.get(f"{{{WORD_NAMESPACE}}}val") if alignment is not None else None
-    if value == "superscript":
-        return f"^{text}^"
-    if value == "subscript":
-        return f"~{text}~"
-    return text
+    return alignment.get(f"{{{WORD_NAMESPACE}}}val", "") if alignment is not None else ""
+
+
+def _paragraph_text(paragraph: ElementTree.Element) -> str:
+    """Read every run of a paragraph, including runs nested in hyperlinks.
+
+    Word wraps a hyperlink's runs in ``w:hyperlink``, so collecting only the direct
+    ``w:r`` children silently drops the link text. Runs that share a vertical alignment
+    are merged, so two adjacent superscripts become ``^2*^`` rather than ``^2^^*^``.
+    """
+    pieces: list[list[str]] = []
+    for run in paragraph.iter(f"{{{WORD_NAMESPACE}}}r"):
+        text = _run_content(run)
+        if not text:
+            continue
+        alignment = _run_alignment(run)
+        if pieces and pieces[-1][0] == alignment:
+            pieces[-1][1] += text
+        else:
+            pieces.append([alignment, text])
+    rendered: list[str] = []
+    for alignment, text in pieces:
+        if alignment == "superscript":
+            rendered.append(f"^{text}^")
+        elif alignment == "subscript":
+            rendered.append(f"~{text}~")
+        else:
+            rendered.append(text)
+    return "".join(rendered)
 
 
 def _paragraph_style(paragraph: ElementTree.Element, names: dict[str, str]) -> str | None:
@@ -288,7 +383,7 @@ def _paragraph_style(paragraph: ElementTree.Element, names: dict[str, str]) -> s
     return names.get(identifier, identifier) if identifier else None
 
 
-def extract_front_matter(path: Path) -> ExtractedFrontMatter:
+def extract_template_body(path: Path) -> ExtractedTemplateBody:
     """Turn the body of a Word template into Markdown that requests the same styles.
 
     A reference document's body text is discarded during rendering, so a publisher's
@@ -298,7 +393,7 @@ def extract_front_matter(path: Path) -> ExtractedFrontMatter:
     if not path.is_file():
         raise PaperflowError(
             f"Word reference document does not exist: {path}",
-            code="template_front_matter.missing",
+            code="template_sections.missing",
             remediation=(
                 "Pass --docx with the template to read, or configure word.reference_docx.",
             ),
@@ -310,7 +405,7 @@ def extract_front_matter(path: Path) -> ExtractedFrontMatter:
     except (OSError, KeyError, zipfile.BadZipFile, ElementTree.ParseError) as exc:
         raise PaperflowError(
             f"Could not read the body of {path}",
-            code="template_front_matter.unreadable",
+            code="template_sections.unreadable",
             remediation=(
                 "Confirm the file is a valid DOCX; a .dotx or .dot must be saved as .docx.",
             ),
@@ -318,7 +413,7 @@ def extract_front_matter(path: Path) -> ExtractedFrontMatter:
 
     names = _style_names(styles)
     body = document.find(f"{{{WORD_NAMESPACE}}}body")
-    blocks: list[str] = []
+    blocks: list[TemplateBlock] = []
     used: list[str] = []
     tables = 0
     drawings = 0
@@ -331,23 +426,22 @@ def extract_front_matter(path: Path) -> ExtractedFrontMatter:
             continue
         if element.find(f".//{{{WORD_NAMESPACE}}}drawing") is not None:
             drawings += 1
-        text = "".join(
-            _run_text(run) for run in element.findall(f"{{{WORD_NAMESPACE}}}r")
-        ).strip()
+        text = _paragraph_text(element).strip()
         if not text:
             continue
         style = _paragraph_style(element, names)
         heading = HEADING_RE.match(style) if style else None
         if heading:
-            blocks.append(f"{'#' * int(heading.group(1))} {text}")
+            level = int(heading.group(1))
+            blocks.append(TemplateBlock(f"{'#' * level} {text}", level))
         elif style is None or style in PLAIN_STYLES:
-            blocks.append(text)
+            blocks.append(TemplateBlock(text, None))
         else:
             if style not in used:
                 used.append(style)
-            blocks.append(f'::: {{custom-style="{style}"}}\n{text}\n:::')
-    return ExtractedFrontMatter(
-        markdown="\n\n".join(blocks) + "\n" if blocks else "",
+            blocks.append(TemplateBlock(f'::: {{custom-style="{style}"}}\n{text}\n:::', None))
+    return ExtractedTemplateBody(
+        blocks=tuple(blocks),
         styles=tuple(used),
         skipped_tables=tables,
         skipped_drawings=drawings,

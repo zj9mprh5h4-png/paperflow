@@ -7,9 +7,11 @@ import pytest
 
 from paperflow.commands import PaperflowError
 from paperflow.template import (
-    extract_front_matter,
+    ExtractedTemplateBody,
+    extract_template_body,
     reference_docx_styles,
     sanitise_reference_docx,
+    template_sections,
 )
 from paperflow.validation import docx_reference_status
 
@@ -274,7 +276,7 @@ def test_front_matter_extraction_reproduces_styles_and_superscripts(tmp_path: Pa
     docx = tmp_path / "journal.docx"
     template_with_body(docx)
 
-    extracted = extract_front_matter(docx)
+    extracted = extract_template_body(docx)
 
     assert extracted.markdown == (
         "# Article Title\n"
@@ -297,13 +299,108 @@ def test_front_matter_extraction_reproduces_styles_and_superscripts(tmp_path: Pa
     assert extracted.skipped_drawings == 1
 
 
+# Shapes taken from a real Frontiers template: a hyperlink mid-sentence, and an
+# affiliation marker immediately followed by a superscript asterisk.
+LINKED_BODY = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    b"<w:body>"
+    b"<w:p><w:r><w:t>Please refer to </w:t></w:r>"
+    b"<w:hyperlink><w:r><w:t>the author guidelines</w:t></w:r></w:hyperlink>"
+    b"<w:r><w:t> for details.</w:t></w:r></w:p>"
+    b'<w:p><w:pPr><w:pStyle w:val="FrontiersAuthor"/></w:pPr>'
+    b"<w:r><w:t>Second Author</w:t></w:r>"
+    b'<w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>2</w:t></w:r>'
+    b'<w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>*</w:t></w:r>'
+    b"</w:p>"
+    b"</w:body></w:document>"
+)
+
+
+def test_extraction_keeps_hyperlink_text_and_merges_adjacent_superscripts(
+    tmp_path: Path,
+) -> None:
+    docx = tmp_path / "journal.docx"
+    with zipfile.ZipFile(docx, "w") as archive:
+        archive.writestr("[Content_Types].xml", b"<Types/>")
+        archive.writestr("_rels/.rels", b"<Relationships/>")
+        archive.writestr("word/document.xml", LINKED_BODY)
+        archive.writestr("word/styles.xml", STYLES)
+
+    markdown = extract_template_body(docx).markdown
+
+    # Runs inside w:hyperlink are not direct children of the paragraph; collecting only
+    # direct children silently dropped the link text.
+    assert "Please refer to the author guidelines for details." in markdown
+    # One superscript group, not '^2^^\\*^'.
+    assert "Second Author^2\\*^" in markdown
+
+
+SPLIT_BODY = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    b"<w:body>"
+    b'<w:p><w:pPr><w:pStyle w:val="FrontiersAuthor"/></w:pPr>'
+    b"<w:r><w:t>First Author</w:t></w:r></w:p>"
+    b'<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>'
+    b"<w:r><w:t>Introduction</w:t></w:r></w:p>"
+    b"<w:p><w:r><w:t>Intro body</w:t></w:r></w:p>"
+    b'<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>'
+    b"<w:r><w:t>Conflict of Interest / Funding!</w:t></w:r></w:p>"
+    b"<w:p><w:r><w:t>Statement body</w:t></w:r></w:p>"
+    b"</w:body></w:document>"
+)
+
+
+def test_splitting_writes_one_file_per_top_level_heading(tmp_path: Path) -> None:
+    docx = tmp_path / "journal.docx"
+    with zipfile.ZipFile(docx, "w") as archive:
+        archive.writestr("[Content_Types].xml", b"<Types/>")
+        archive.writestr("_rels/.rels", b"<Relationships/>")
+        archive.writestr("word/document.xml", SPLIT_BODY)
+        archive.writestr("word/styles.xml", STYLES)
+
+    extracted = extract_template_body(docx)
+    sections = template_sections(extracted)
+
+    assert extracted.top_level_headings == 2
+    assert [section.filename for section in sections] == [
+        "00-front-matter.md",
+        "01-introduction.md",
+        "02-conflict-of-interest-funding.md",
+    ]
+    # Everything before the first heading has no heading of its own and would be lost.
+    assert sections[0].markdown == (
+        '::: {custom-style="Frontiers Author"}\nFirst Author\n:::\n'
+    )
+    assert sections[1].markdown == "# Introduction\n\nIntro body\n"
+    assert sections[2].markdown == "# Conflict of Interest / Funding!\n\nStatement body\n"
+
+
+def test_splitting_a_body_without_headings_yields_one_file(tmp_path: Path) -> None:
+    docx = tmp_path / "journal.docx"
+    template_with_body(docx)
+
+    extracted = extract_template_body(docx)
+    extracted_without_headings = ExtractedTemplateBody(
+        blocks=tuple(block for block in extracted.blocks if block.heading_level is None),
+        styles=extracted.styles,
+        skipped_tables=0,
+        skipped_drawings=0,
+    )
+    sections = template_sections(extracted_without_headings)
+
+    assert extracted_without_headings.top_level_headings == 0
+    assert [section.filename for section in sections] == ["00-front-matter.md"]
+
+
 def test_front_matter_extraction_rejects_a_styles_only_reference(tmp_path: Path) -> None:
     docx = tmp_path / "journal.docx"
     publisher_template(docx)
     with zipfile.ZipFile(docx, "a") as archive:
         archive.writestr("word/styles.xml", STYLES)
 
-    assert extract_front_matter(docx).markdown == ""
+    assert extract_template_body(docx).markdown == ""
 
 
 def test_template_styles_rejects_a_missing_reference(tmp_path: Path) -> None:
