@@ -168,6 +168,22 @@ Run Doctor again after changing the template:
 uv run paperflow doctor
 ```
 
+Expect one failure at this point if the neutral example is still in place:
+
+```text
+[FAIL] manuscript styles in reference: not defined in the reference:
+       'Author' at manuscript/sections/front-matter.md:5
+  Fix: Did you mean 'Author List'?
+```
+
+That is correct and temporary. The shipped `front-matter.md` requests `Title` and `Author`,
+the names Pandoc's default reference defines, and a publisher template usually names its styles
+differently. The mismatch disappears once you replace that file with your own front matter, or
+generate it from the template as described in the
+[Word-template guide](word-template.md#start-from-the-templates-own-boilerplate). Configuring a
+template before replacing the neutral content is the normal order; Doctor simply reports the gap
+in between.
+
 ## 8. Build and inspect the outputs
 
 ```bash
